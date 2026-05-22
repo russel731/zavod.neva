@@ -115,6 +115,12 @@ textarea{resize:vertical;min-height:70px}
 ::-webkit-scrollbar{width:3px}
 ::-webkit-scrollbar-thumb{background:var(--border2);border-radius:2px}
 
+/* CURRENCY TOGGLE */
+.cur-toggle{display:flex;background:var(--bg3);border-radius:20px;padding:3px;gap:2px}
+.cur-btn{flex:1;padding:5px 10px;border-radius:16px;border:none;background:none;font-family:inherit;font-size:13px;font-weight:600;color:var(--text3);cursor:pointer;transition:.15s}
+.cur-btn.active{background:var(--accent);color:#fff}
+.cur-btn:active{transform:scale(.95)}
+
 .fab{position:fixed;bottom:24px;right:16px;width:52px;height:52px;border-radius:50%;background:var(--accent);color:#fff;font-size:24px;display:flex;align-items:center;justify-content:center;cursor:pointer;box-shadow:0 4px 20px rgba(91,127,255,.4);border:none;z-index:50;transition:.2s}
 .fab:active{transform:scale(.92)}
 </style>
@@ -147,7 +153,7 @@ if (tg) {
 }
 
 /* ===== STORAGE ===== */
-const STORAGE_KEY = 'polcoat_v2';
+const STORAGE_KEY = 'polcoat_v3';
 
 const DEFAULT_TEMPLATES = [
   {id:'t1',name:'Эпоксидная грунтовка ЭП-001',type:'1c',color:'Прозрачный',price:850,
@@ -174,20 +180,42 @@ function saveData(state) {
   try { localStorage.setItem(STORAGE_KEY, JSON.stringify(state)); } catch {}
 }
 
+
+const saved = loadData();
 const state = (() => {
-  const saved = loadData();
   return {
     screen: 'home',
     templates: saved?.templates || JSON.parse(JSON.stringify(DEFAULT_TEMPLATES)),
     proposals: saved?.proposals || [],
+    currency: saved?.currency || 'kzt',
+    rateRubToKzt: saved?.rateRubToKzt || 5.5,
     current: { name: '', area: '', type: '1c', templateId: '', params: {} },
     editTemplate: null,
     viewProposal: null,
   };
 })();
 
-function persist() { saveData({ templates: state.templates, proposals: state.proposals }); }
+function persist() { saveData({ templates: state.templates, proposals: state.proposals, currency: state.currency, rateRubToKzt: state.rateRubToKzt }); }
 function genId() { return Date.now().toString(36) + Math.random().toString(36).slice(2, 6); }
+
+
+/* ===== CURRENCY HELPERS ===== */
+function curSymbol() { return state.currency === 'kzt' ? '₸' : '₽'; }
+function curLabel() { return state.currency === 'kzt' ? 'тенге' : 'рублей'; }
+function kztToDisplay(kzt) {
+  if (state.currency === 'kzt') return Math.round(kzt);
+  return Math.round(kzt / state.rateRubToKzt);
+}
+function displayToKzt(val) {
+  if (state.currency === 'kzt') return val;
+  return val * state.rateRubToKzt;
+}
+function fmtPrice(kzt) {
+  return kztToDisplay(kzt).toLocaleString('ru') + ' ' + curSymbol();
+}
+function pricePerKgDisplay(priceKzt) {
+  return kztToDisplay(priceKzt).toLocaleString('ru') + ' ' + curSymbol() + '/кг';
+}
 
 /* ===== CALC ===== */
 function calcProposal(area, tpl) {
@@ -204,7 +232,7 @@ function calcProposal(area, tpl) {
     const costMat = Math.round(actualKg * tpl.price / 1000 * 100) / 100;
     return { type: '1c', area: a, primerTotal: +primerTotal.toFixed(2), mainTotal: +mainTotal.toFixed(2),
       totalKg: +totalKg.toFixed(2), thinnerKg: +thinnerKg.toFixed(2), containers, actualKg,
-      costMat: Math.round(costMat), containerWeight: cw, layers: tpl.layers };
+      costKzt: Math.round(costMat), containerWeight: cw, layers: tpl.layers };
   } else {
     const primerTotal = a * (tpl.primer_consumption / 1000);
     const mainTotal = a * (tpl.consumption / 1000) * (tpl.layers - 1);
@@ -217,7 +245,7 @@ function calcProposal(area, tpl) {
     const costMat = Math.round(totalKg * tpl.price / 1000 * 100) / 100;
     return { type: '2c', area: a, primerTotal: +primerTotal.toFixed(2), mainTotal: +mainTotal.toFixed(2),
       totalBase: +totalBase.toFixed(2), thinnerKg: +thinnerKg.toFixed(2), kitsNeeded, basePerKit: base,
-      hardenerPerKit: hardener, totalKg: +totalKg.toFixed(2), costMat: Math.round(costMat), layers: tpl.layers };
+      hardenerPerKit: hardener, totalKg: +totalKg.toFixed(2), costKzt: Math.round(costMat), layers: tpl.layers };
   }
 }
 
@@ -247,16 +275,25 @@ function stepper(active) {
   }).join('')}</div>`;
 }
 
+
+function curToggleHtml() {
+  return `<div class="cur-toggle">
+    <button class="cur-btn${state.currency==='kzt'?' active':''}" id="cur-kzt">₸ Тенге</button>
+    <button class="cur-btn${state.currency==='rub'?' active':''}" id="cur-rub">₽ Рубли</button>
+  </div>`;
+}
+
 /* ===== RENDERS ===== */
 function renderHome() {
   const p = state.proposals;
   return `
   <div class="header">
     <div class="logo">🏭</div>
-    <div>
+    <div style="flex:1">
       <div class="header-title">ПолКоат КП</div>
       <div class="header-sub">Расчёт коммерческих предложений</div>
     </div>
+    ${curToggleHtml()}
   </div>
   <div class="type-grid" style="margin-bottom:16px">
     <div class="type-card" id="btn-new">
@@ -270,11 +307,17 @@ function renderHome() {
       <div class="type-card-sub">${p.length} сохранено</div>
     </div>
   </div>
-  <div class="card" id="btn-templates" style="cursor:pointer;display:flex;align-items:center;gap:10px">
-    <div style="font-size:22px">🗂</div>
-    <div><div style="font-weight:600;font-size:14px">База шаблонов</div>
-    <div style="font-size:12px;color:var(--text3)">${state.templates.length} материалов</div></div>
-    <div style="margin-left:auto;color:var(--text3);font-size:20px">›</div>
+  <div style="display:flex;gap:8px;margin-bottom:12px">
+    <div class="card" id="btn-templates" style="cursor:pointer;display:flex;align-items:center;gap:10px;flex:1;margin-bottom:0">
+      <div style="font-size:22px">🗂</div>
+      <div><div style="font-weight:600;font-size:14px">Шаблоны</div>
+      <div style="font-size:12px;color:var(--text3)">${state.templates.length} материалов</div></div>
+      <div style="margin-left:auto;color:var(--text3);font-size:20px">›</div>
+    </div>
+    <div class="card" id="btn-settings" style="cursor:pointer;display:flex;align-items:center;gap:8px;margin-bottom:0;padding:12px 14px">
+      <div style="font-size:20px">⚙️</div>
+      <div style="font-size:12px;font-weight:600;white-space:nowrap">Курс<br><span style="color:var(--accent2)">1₽ = ${state.rateRubToKzt}₸</span></div>
+    </div>
   </div>
   ${p.length > 0 ? `
   <div style="margin-top:20px">
@@ -284,7 +327,7 @@ function renderHome() {
       <div class="mat-badge" style="background:var(--accentDim);color:var(--accent2)">КП</div>
       <div class="mat-info"><div class="mat-name">${esc(pr.name)}</div>
       <div class="mat-sub">${pr.area} м² · ${esc(pr.matName)}</div></div>
-      <div class="mat-price">${pr.total.toLocaleString('ru')} ₸</div>
+      <div class="mat-price">${fmtPrice(pr.costKzt || pr.total || 0)}</div>
     </div>`).join('')}
   </div>` : ''}`;
 }
@@ -329,7 +372,7 @@ function renderStep2() {
       ${t.type === '1c' ? '1К' : '2К'}</div>
     <div class="mat-info"><div class="mat-name">${esc(t.name)}</div>
       <div class="mat-sub">${esc(t.color)} · ${t.layers} сл. · ${t.consumption} г/м²</div></div>
-    <div class="mat-price">${t.price.toLocaleString('ru')} ₸/кг</div>
+    <div class="mat-price">${pricePerKgDisplay(t.price)}</div>
   </div>`).join('')}
   <div class="btn-row" style="margin-top:16px">
     <button class="btn btn-secondary" id="btn-back2b">← Назад</button>
@@ -350,7 +393,7 @@ function renderStep3() {
     <div class="field"><label>Название</label><input id="p-name" value="${esc(p.name || tpl.name)}"></div>
     <div class="field-row">
       <div class="field"><label>Цвет</label><input id="p-color" value="${esc(p.color || tpl.color)}"></div>
-      <div class="field"><label>Цена (₸/кг)</label><input id="p-price" type="number" inputmode="decimal" value="${p.price || tpl.price}"></div>
+      <div class="field"><label>Цена (${curSymbol()}/кг)</label><input id="p-price" type="number" inputmode="decimal" value="${kztToDisplay(p.price || tpl.price)}"></div>
     </div>
     <div class="field-row">
       <div class="field"><label>Расход (г/м²)</label><input id="p-cons" type="number" inputmode="decimal" value="${p.consumption || tpl.consumption}"></div>
@@ -403,7 +446,7 @@ function renderResult() {
     <div style="font-size:12px;color:var(--text3);margin-bottom:4px">${esc(c.name || 'Объект')}</div>
     <div style="font-size:13px;font-weight:600;margin-bottom:8px">${esc(mergedTpl.name)}</div>
     <span class="tag tag-${res.type}">${is2c ? '2К — Двухкомпонентная' : '1К — Однокомпонентная'}</span>
-    <div class="price-big">${res.costMat.toLocaleString('ru')} ₸</div>
+    <div class="price-big">${fmtPrice(res.costKzt)}</div>
     <div class="price-label">стоимость материалов</div>
   </div>
   <div class="result-grid">
@@ -432,7 +475,7 @@ function renderResult() {
     <div class="brow"><span class="brow-label">Разбавитель (${mergedTpl.thinnerPct}%)</span>
       <span class="brow-val">${res.thinnerKg} кг · ${esc(mergedTpl.thinner)}</span></div>
     <div class="brow"><span class="brow-label">Цена материала</span>
-      <span class="brow-val">${(mergedTpl.price || 0).toLocaleString('ru')} ₸/кг</span></div>
+      <span class="brow-val">${pricePerKgDisplay(mergedTpl.price || 0)}</span></div>
   </div>
   ${mergedTpl.comment ? `<div class="alert alert-info">📌 ${esc(mergedTpl.comment)}</div>` : ''}
   ${mergedTpl.notes ? `<div class="alert alert-warn">📝 ${esc(mergedTpl.notes)}</div>` : ''}
@@ -441,6 +484,41 @@ function renderResult() {
     <button class="btn btn-success" id="btn-export">📄 Экспорт PDF</button>
   </div>
   <div style="margin-top:8px"><button class="btn btn-secondary" id="btn-new-after">+ Новое КП</button></div>`;
+}
+
+function renderSettings() {
+  return `
+  <div class="nav"><button class="nav-back" id="btn-back-home">← Назад</button>
+    <div class="nav-title">Настройки валюты</div></div>
+  <div class="card">
+    <div class="section-title">Активная валюта</div>
+    <div class="type-grid">
+      <div class="type-card${state.currency==='kzt'?' selected':''}" id="set-kzt">
+        <div class="type-card-icon">🇰🇿</div>
+        <div class="type-card-name">₸ Тенге</div>
+        <div class="type-card-sub">Казахстан</div>
+      </div>
+      <div class="type-card${state.currency==='rub'?' selected':''}" id="set-rub">
+        <div class="type-card-icon">🇷🇺</div>
+        <div class="type-card-name">₽ Рубли</div>
+        <div class="type-card-sub">Россия</div>
+      </div>
+    </div>
+  </div>
+  <div class="card">
+    <div class="section-title">Курс конвертации</div>
+    <div class="alert alert-info" style="margin-bottom:12px">💡 Цены в шаблонах хранятся в тенге. При выборе рублей суммы пересчитываются автоматически.</div>
+    <div class="field">
+      <label>1 рубль (₽) = ? тенге (₸)</label>
+      <input id="rate-input" type="number" inputmode="decimal" step="0.1" value="${state.rateRubToKzt}" placeholder="5.5">
+    </div>
+    <div style="font-size:12px;color:var(--text3);margin-top:-8px">
+      Пример: при курсе ${state.rateRubToKzt} → цена 1000 ₸ = ${Math.round(1000/state.rateRubToKzt)} ₽
+    </div>
+  </div>
+  <div class="btn-row">
+    <button class="btn btn-primary" id="btn-save-settings">💾 Сохранить</button>
+  </div>\`;
 }
 
 function renderTemplates() {
@@ -457,7 +535,7 @@ function renderTemplates() {
       ${tpl.type === '1c' ? '1К' : '2К'}</div>
     <div class="mat-info" style="cursor:pointer" data-edit-open="${tpl.id}">
       <div class="mat-name">${esc(tpl.name)}</div>
-      <div class="mat-sub">${esc(tpl.color)} · ${tpl.consumption} г/м² · ${tpl.price.toLocaleString('ru')} ₸/кг</div>
+      <div class="mat-sub">${esc(tpl.color)} · ${tpl.consumption} г/м² · ${pricePerKgDisplay(tpl.price)}</div>
     </div>
     <div style="display:flex;flex-direction:column;gap:4px;flex-shrink:0">
       <button class="btn btn-secondary" style="padding:5px 10px;font-size:11px;width:auto" data-edit="${tpl.id}">✏️</button>
@@ -486,7 +564,7 @@ function renderEditTemplate() {
     </div>
     <div class="field-row">
       <div class="field"><label>Цвет</label><input id="e-color" value="${esc(t.color)}"></div>
-      <div class="field"><label>Цена (₸/кг)</label><input id="e-price" type="number" inputmode="decimal" value="${t.price}"></div>
+      <div class="field"><label>Цена (${curSymbol()}/кг)</label><input id="e-price" type="number" inputmode="decimal" value="${kztToDisplay(t.price)}"></div>
     </div>
   </div>
   <div class="card">
@@ -543,7 +621,7 @@ function renderProposals() {
       <div class="mat-sub" style="margin-top:3px">${new Date(pr.date).toLocaleDateString('ru')}</div>
     </div>
     <div style="display:flex;flex-direction:column;align-items:flex-end;gap:6px;flex-shrink:0">
-      <div class="mat-price">${pr.total.toLocaleString('ru')} ₸</div>
+      <div class="mat-price">${fmtPrice(pr.costKzt || pr.total || 0)}</div>
       <button class="btn btn-danger" style="padding:5px 10px;font-size:11px;width:auto" data-pdel="${pr.id}">🗑</button>
     </div>
   </div>`).join('')}`;
@@ -561,7 +639,7 @@ function renderViewProposal() {
     <div style="font-size:12px;color:var(--text3);margin-bottom:4px">${new Date(pr.date).toLocaleDateString('ru')}</div>
     <div style="font-size:15px;font-weight:700;margin-bottom:8px">${esc(pr.matName)}</div>
     <span class="tag tag-${pr.result.type}">${is2c ? '2К — Двухкомпонентная' : '1К — Однокомпонентная'}</span>
-    <div class="price-big">${pr.total.toLocaleString('ru')} ₸</div>
+    <div class="price-big">${fmtPrice(pr.costKzt || pr.total || 0)}</div>
     <div class="price-label">стоимость материалов · ${pr.area} м²</div>
   </div>
   <div class="result-grid">
@@ -635,7 +713,7 @@ function exportPDF(pr) {
     <div><span class="tag">${is2c ? '2К — Двухкомпонентная' : '1К — Однокомпонентная'}</span></div>
   </div>
   <div style="text-align:right">
-    <div class="price-val">${pr.total.toLocaleString('ru')} ₸</div>
+    <div class="price-val">${fmtPrice(pr.costKzt || pr.total || 0)}</div>
     <div class="price-sub">стоимость материалов</div>
   </div>
 </div>
@@ -660,7 +738,7 @@ ${is2c ? `
 `}
 <tr><td>Масса материала итого</td><td><strong>${res.totalKg} кг</strong></td></tr>
 <tr><td>Разбавитель</td><td>${res.thinnerKg} кг</td></tr>
-<tr class="total-row"><td>ИТОГО стоимость материалов</td><td>${pr.total.toLocaleString('ru')} ₸</td></tr>
+<tr class="total-row"><td>ИТОГО стоимость материалов</td><td>${fmtPrice(pr.costKzt || pr.total || 0)}</td></tr>
 </table>
 <div class="footer">
   <div>Сформировано: ПолКоат КП</div>
@@ -681,7 +759,9 @@ ${is2c ? `
 function v(id) { const el = document.getElementById(id); return el ? el.value : null; }
 function n(id) { const el = document.getElementById(id); return el ? parseFloat(el.value) || 0 : null; }
 function collectParams() {
-  return { name: v('p-name'), color: v('p-color'), price: n('p-price'), consumption: n('p-cons'),
+  const rawPrice = n('p-price');
+  const priceKzt = displayToKzt(rawPrice);
+  return { name: v('p-name'), color: v('p-color'), price: priceKzt, consumption: n('p-cons'),
     layers: n('p-layers'), primer_consumption: n('p-primer'), container_type: v('p-ctype'),
     container_weight: n('p-cwt'), base: n('p-base'), hardener: n('p-hard'),
     thinner: v('p-thinner'), thinnerPct: n('p-tpct'), comment: v('p-comment'), notes: v('p-notes') };
@@ -689,7 +769,9 @@ function collectParams() {
 function collectTemplate() {
   const typeEl = document.querySelector('#etype-2c.selected');
   const type = typeEl ? '2c' : '1c';
-  return { name: v('e-name'), type, color: v('e-color'), price: n('e-price'), consumption: n('e-cons'),
+  const rawPrice = n('e-price');
+  const priceKzt = displayToKzt(rawPrice);
+  return { name: v('e-name'), type, color: v('e-color'), price: priceKzt, consumption: n('e-cons'),
     layers: n('e-layers'), primer_consumption: n('e-primer'), container_type: v('e-ctype'),
     container_weight: n('e-cwt'), base: n('e-base'), hardener: n('e-hard'),
     thinner: v('e-thinner'), thinnerPct: n('e-tpct'), comment: v('e-comment'), notes: v('e-notes') };
@@ -708,12 +790,27 @@ function render() {
   else if (s === 'editTemplate') root.innerHTML = renderEditTemplate();
   else if (s === 'proposals') root.innerHTML = renderProposals();
   else if (s === 'viewProposal') root.innerHTML = renderViewProposal();
+  else if (s === 'settings') root.innerHTML = renderSettings();
   bindEvents();
 }
 
 function on(id, fn) { const el = document.getElementById(id); if (el) el.addEventListener('click', fn); }
 
 function bindEvents() {
+  // CURRENCY TOGGLE
+  on('cur-kzt', () => { state.currency='kzt'; persist(); render(); });
+  on('cur-rub', () => { state.currency='rub'; persist(); render(); });
+
+  // SETTINGS
+  on('btn-settings', () => nav('settings'));
+  on('set-kzt', () => { state.currency='kzt'; render(); });
+  on('set-rub', () => { state.currency='rub'; render(); });
+  on('btn-save-settings', () => {
+    const r = parseFloat(document.getElementById('rate-input')?.value) || 5.5;
+    state.rateRubToKzt = r; persist();
+    show('✅ Курс сохранён: 1₽ = ' + r + '₸'); nav('home');
+  });
+
   // HOME
   on('btn-new', () => nav('new1'));
   on('btn-proposals', () => nav('proposals'));
@@ -770,7 +867,7 @@ function bindEvents() {
     const mergedTpl = { ...tpl, ...c.params };
     const res = calcProposal(c.area, mergedTpl);
     const pr = { id: genId(), name: c.name || 'Без названия', area: parseFloat(c.area),
-      matName: mergedTpl.name, total: res.costMat, date: Date.now(), result: res };
+      matName: mergedTpl.name, costKzt: res.costKzt, date: Date.now(), result: res };
     state.proposals.push(pr); persist();
     show('✅ КП сохранено!');
   });
@@ -779,7 +876,7 @@ function bindEvents() {
     const tpl = state.templates.find(t => t.id === c.templateId);
     const mergedTpl = { ...tpl, ...c.params };
     const res = calcProposal(c.area, mergedTpl);
-    exportPDF({ name: c.name || 'Без названия', date: Date.now(), matName: mergedTpl.name, total: res.costMat, result: res, id: genId() });
+    exportPDF({ name: c.name || 'Без названия', date: Date.now(), matName: mergedTpl.name, costKzt: res.costKzt, result: res, id: genId() });
   });
 
   // TEMPLATES
