@@ -82,6 +82,14 @@ select option{background:var(--bg3)}
 .layer-stats{display:flex;gap:6px;flex-wrap:wrap}
 .layer-stat{font-size:11px;color:var(--text3);background:var(--bg4);padding:2px 7px;border-radius:8px}
 .layer-price{font-size:13px;font-weight:700;color:var(--success);margin-top:6px}
+.layer-item-open{border-color:var(--accent);background:var(--bg4)}
+.layer-edit-divider{height:1px;background:var(--border2);margin:10px 0}
+.layer-edit-form{margin-top:4px}
+.edit-btn{font-size:12px!important}
+.edit-btn.active-edit{background:var(--accentDim)!important;color:var(--accent2)!important}
+.icon-btn:hover{background:var(--danger);color:#fff}
+.icon-btn.up-btn:hover{background:var(--accent);color:#fff}
+.icon-btn.edit-btn:hover{background:var(--accentDim)!important;color:var(--accent2)!important}
 /* RESULT TABLE */
 .result-table{background:var(--bg3);border-radius:var(--r2);overflow:hidden;margin-bottom:12px}
 .rt-row{display:flex;align-items:center;padding:10px 12px;border-bottom:1px solid var(--border);gap:8px}
@@ -261,9 +269,9 @@ function calcLayer(kpLayer, area){
 
   let containers, kits, actualMatKg, costMat, totalKg;
 
-  if(comp==='2c' && prod?.base){
-    const base = parseFloat(prod.base)||18;
-    const hardener = parseFloat(prod.hardener)||3;
+  if(comp==='2c' && (prod?.base || kpLayer.customContainer)){
+    const base = kpLayer.customContainer != null ? kpLayer.customContainer : (parseFloat(prod?.base)||18);
+    const hardener = kpLayer.customHardener != null ? kpLayer.customHardener : (parseFloat(prod?.hardener)||3);
     // Кол-во комплектов кратно 1, делим по основе
     kits = Math.ceil(baseConsKg / base);
     // Фактический расход: кол-во компл × (основа + отвердитель)
@@ -273,7 +281,7 @@ function calcLayer(kpLayer, area){
     containers = null;
     totalKg = actualMatKg;
   } else {
-    const cw = parseFloat(prod?.container)||25;
+    const cw = kpLayer.customContainer != null ? kpLayer.customContainer : (parseFloat(prod?.container)||25);
     // Кол-во тар кратно 1, в большую сторону
     containers = Math.ceil(baseConsKg / cw);
     actualMatKg = containers * cw;
@@ -449,11 +457,16 @@ function renderKPBuild(){
     const a=parseFloat(kp.area)||0;
     const totalKg=a*(cons/1000)*(l.layers||1);
     const costEst=Math.round(totalKg*price/1000);
-    return `<div class="layer-item">
+    const isExpanded = state.expandedLayer === i;
+    const color = l.customColor || prod?.color || '';
+    const container = l.customContainer != null ? l.customContainer : (prod?.container || prod?.base ? (prod.comp==='2c'?prod.base:prod.container) : 25);
+    const is2c = comp==='2c';
+    return `<div class="layer-item${isExpanded?' layer-item-open':''}">
       <div class="layer-header">
         <span class="layer-badge ${catBadgeClass(cat)}">${catLabel(cat)}</span>
         <span class="layer-name">${esc(name)}</span>
         <div class="layer-actions">
+          <button class="icon-btn edit-btn${isExpanded?' active-edit':''}" data-edit="${i}" title="Редактировать">✏️</button>
           ${i>0?`<button class="icon-btn up-btn" data-up="${i}" title="Вверх">↑</button>`:''}
           <button class="icon-btn" data-del="${i}" title="Удалить">✕</button>
         </div>
@@ -463,9 +476,36 @@ function renderKPBuild(){
         <span class="layer-stat">${l.layers||1} сл.</span>
         <span class="layer-stat">${cons} г/м²</span>
         <span class="layer-stat">${price} ₽/кг</span>
+        ${color?`<span class="layer-stat" style="color:var(--text2)">${esc(color)}</span>`:''}
         ${totalKg>0?`<span class="layer-stat">теор. ${fmtN(totalKg,1)} кг</span>`:''}
       </div>
       ${a>0?`<div class="layer-price">≈ ${fmtRub(costEst)}</div>`:''}
+      ${isExpanded?`
+      <div class="layer-edit-form">
+        <div class="layer-edit-divider"></div>
+        <div class="field-row" style="margin-bottom:8px">
+          <div class="field" style="margin-bottom:0"><label>Название</label>
+            <input class="le-name" data-li="${i}" value="${esc(name)}" placeholder="Название материала"></div>
+          <div class="field" style="margin-bottom:0"><label>Цвет / RAL</label>
+            <input class="le-color" data-li="${i}" value="${esc(color)}" placeholder="RAL 7040"></div>
+        </div>
+        <div class="field-row" style="margin-bottom:8px">
+          <div class="field" style="margin-bottom:0"><label>Цена (₽/кг)</label>
+            <input class="le-price" data-li="${i}" type="number" inputmode="decimal" value="${price}"></div>
+          <div class="field" style="margin-bottom:0"><label>Расход (г/м²)</label>
+            <input class="le-cons" data-li="${i}" type="number" inputmode="decimal" value="${cons}"></div>
+        </div>
+        <div class="field-row" style="margin-bottom:8px">
+          <div class="field" style="margin-bottom:0"><label>Слоёв</label>
+            <input class="le-layers" data-li="${i}" type="number" inputmode="numeric" min="1" value="${l.layers||1}"></div>
+          <div class="field" style="margin-bottom:0">
+            <label>${is2c?'Основа (кг/компл)':'Вес тары (кг)'}</label>
+            <input class="le-container" data-li="${i}" type="number" inputmode="decimal" value="${is2c?(l.customContainer||prod?.base||18):(l.customContainer||prod?.container||25)}"></div>
+        </div>
+        ${is2c?`<div class="field" style="margin-bottom:8px"><label>Отвердитель (кг/компл)</label>
+          <input class="le-hardener" data-li="${i}" type="number" inputmode="decimal" value="${l.customHardener||prod?.hardener||3}"></div>`:''}
+        <button class="btn btn-primary" style="padding:8px;font-size:13px" data-save-layer="${i}">✓ Применить</button>
+      </div>`:''}
     </div>`;
   }).join('')}
   <button class="btn btn-ghost" id="add-layer" style="margin-bottom:12px">+ Добавить материал</button>
@@ -913,6 +953,7 @@ function bindEvents(){
   on('add-layer',()=>{state.addLayerCategory='primer';nav('kp_add_layer')});
   on('go-kp-result',()=>{
     state.kp.note=document.getElementById('kp-note')?.value||'';
+    state.expandedLayer=null;
     nav('kp_result');
   });
   document.querySelectorAll('[data-up]').forEach(el=>{
@@ -925,7 +966,58 @@ function bindEvents(){
   document.querySelectorAll('[data-del]').forEach(el=>{
     el.addEventListener('click',e=>{
       e.stopPropagation();
-      state.kp.layers.splice(parseInt(el.dataset.del),1);render();
+      const idx=parseInt(el.dataset.del);
+      state.kp.layers.splice(idx,1);
+      if(state.expandedLayer===idx) state.expandedLayer=null;
+      else if(state.expandedLayer>idx) state.expandedLayer--;
+      render();
+    });
+  });
+
+  // TOGGLE EDIT FORM
+  document.querySelectorAll('[data-edit]').forEach(el=>{
+    el.addEventListener('click',e=>{
+      e.stopPropagation();
+      const i=parseInt(el.dataset.edit);
+      state.expandedLayer = state.expandedLayer===i ? null : i;
+      render();
+    });
+  });
+
+  // SAVE LAYER INLINE EDIT
+  document.querySelectorAll('[data-save-layer]').forEach(el=>{
+    el.addEventListener('click',e=>{
+      e.stopPropagation();
+      const i=parseInt(el.dataset.saveLayer);
+      const layer=state.kp.layers[i];
+      const g=(cls)=>document.querySelector(`[data-li="${i}"].${cls}`);
+      const gv=(cls)=>g(cls)?.value.trim();
+      const gn=(cls)=>parseFloat(g(cls)?.value)||null;
+
+      const newName=gv('le-name');
+      const newColor=gv('le-color');
+      const newPrice=gn('le-price');
+      const newCons=gn('le-cons');
+      const newLayers=parseInt(g('le-layers')?.value)||1;
+      const newContainer=gn('le-container');
+      const newHardener=gn('le-hardener');
+
+      const prod=layer.productId?getProduct(layer.productId):null;
+
+      // Сохраняем только изменённые поля (отличающиеся от оригинала)
+      layer.customName = newName && newName!==(prod?.name||'') ? newName : null;
+      layer.customColor = newColor || null;
+      layer.customPrice = newPrice!==(prod?.price||0) ? newPrice : null;
+      layer.customConsumption = newCons!==(prod?.consumption||0) ? newCons : null;
+      layer.layers = newLayers;
+      // Для container/base — сохраняем всегда если изменено
+      const origContainer = prod?.comp==='2c' ? (prod?.base||18) : (prod?.container||25);
+      layer.customContainer = newContainer!==origContainer ? newContainer : null;
+      layer.customHardener = newHardener!==(prod?.hardener||3) ? newHardener : null;
+
+      state.expandedLayer=null;
+      render();
+      show('✅ Параметры обновлены');
     });
   });
 
