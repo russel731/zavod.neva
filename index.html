@@ -3,9 +3,8 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-<title>Завод Нева — Расчёт покраски полов</title>
+<title>Завод Нева — КП</title>
 <script src="https://telegram.org/js/telegram-web-app.js"></script>
-<link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Onest:wght@400;500;600;700&display=swap" rel="stylesheet">
 <style>
 *{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
@@ -14,857 +13,1032 @@
   --accent:#5b7fff;--accent2:#7c9fff;--accentDim:rgba(91,127,255,.15);
   --text:#e8eaf2;--text2:#9ba3bf;--text3:#5a6282;
   --border:rgba(255,255,255,.08);--border2:rgba(255,255,255,.15);
-  --success:#3dd68c;--warning:#f5a623;--danger:#ff5e7a;
+  --success:#3dd68c;--warning:#f5a623;--danger:#ff5e7a;--purple:#b47fff;
   --r:12px;--r2:8px;
 }
 html,body{height:100%;overflow:hidden}
 body{font-family:'Onest',sans-serif;background:var(--bg);color:var(--text);font-size:14px;line-height:1.5}
 #scroll-root{height:100%;overflow-y:auto;-webkit-overflow-scrolling:touch}
-.app{max-width:420px;margin:0 auto;padding:16px 12px 80px}
-
-.header{display:flex;align-items:center;gap:10px;margin-bottom:24px;padding-bottom:16px;border-bottom:1px solid var(--border)}
-.logo{width:36px;height:36px;background:var(--accentDim);border-radius:10px;display:flex;align-items:center;justify-content:center;font-size:18px;flex-shrink:0}
-.header-title{font-size:16px;font-weight:700;letter-spacing:-.3px}
-.header-sub{font-size:12px;color:var(--text3)}
-
-.stepper{display:flex;align-items:center;gap:0;margin-bottom:24px}
-.step-dot{width:28px;height:28px;border-radius:50%;background:var(--bg3);border:1.5px solid var(--border2);display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:600;color:var(--text3);flex-shrink:0;transition:.2s}
-.step-dot.active{background:var(--accent);border-color:var(--accent);color:#fff}
-.step-dot.done{background:var(--accentDim);border-color:var(--accent);color:var(--accent2)}
-.step-line{flex:1;height:1.5px;background:var(--border);transition:.2s}
-.step-line.done{background:var(--accent)}
-
-.card{background:var(--bg2);border:1px solid var(--border);border-radius:var(--r);padding:16px;margin-bottom:12px}
-
-label{font-size:12px;color:var(--text2);display:block;margin-bottom:5px;font-weight:500}
-input,select,textarea{width:100%;background:var(--bg3);border:1px solid var(--border2);border-radius:var(--r2);padding:10px 12px;color:var(--text);font-family:inherit;font-size:14px;outline:none;transition:.15s;-webkit-appearance:none}
+.app{max-width:440px;margin:0 auto;padding:16px 12px 90px}
+/* HEADER */
+.header{display:flex;align-items:center;gap:10px;margin-bottom:20px;padding-bottom:14px;border-bottom:1px solid var(--border)}
+.logo{width:38px;height:38px;background:var(--accentDim);border-radius:10px;display:flex;align-items:center;justify-content:center;font-size:20px;flex-shrink:0}
+.header-title{font-size:17px;font-weight:700;letter-spacing:-.3px}
+.header-sub{font-size:11px;color:var(--text3)}
+/* CARDS */
+.card{background:var(--bg2);border:1px solid var(--border);border-radius:var(--r);padding:14px;margin-bottom:10px}
+/* FORMS */
+label{font-size:12px;color:var(--text2);display:block;margin-bottom:4px;font-weight:500}
+input,select,textarea{width:100%;background:var(--bg3);border:1px solid var(--border2);border-radius:var(--r2);padding:9px 11px;color:var(--text);font-family:inherit;font-size:14px;outline:none;transition:.15s;-webkit-appearance:none}
 input:focus,select:focus,textarea:focus{border-color:var(--accent);background:var(--bg4)}
 input::placeholder{color:var(--text3)}
 select option{background:var(--bg3)}
-textarea{resize:vertical;min-height:70px}
-.field{margin-bottom:14px}
-.field-row{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:14px}
-
-.btn{display:inline-flex;align-items:center;justify-content:center;gap:7px;padding:11px 18px;border-radius:var(--r2);font-family:inherit;font-size:14px;font-weight:600;cursor:pointer;border:none;transition:.15s;width:100%}
+.field{margin-bottom:12px}
+.field-row{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:12px}
+.field-row3{display:grid;grid-template-columns:2fr 1fr 1fr;gap:8px;margin-bottom:12px}
+/* BUTTONS */
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:6px;padding:10px 16px;border-radius:var(--r2);font-family:inherit;font-size:14px;font-weight:600;cursor:pointer;border:none;transition:.15s;width:100%}
 .btn:active{transform:scale(.97)}
 .btn-primary{background:var(--accent);color:#fff}
-.btn-primary:hover{background:#4a6eff}
 .btn-secondary{background:var(--bg3);color:var(--text);border:1px solid var(--border2)}
-.btn-secondary:hover{background:var(--bg4)}
 .btn-danger{background:rgba(255,94,122,.12);color:var(--danger);border:1px solid rgba(255,94,122,.25)}
 .btn-success{background:rgba(61,214,140,.12);color:var(--success);border:1px solid rgba(61,214,140,.25)}
-.btn-row{display:flex;gap:8px;margin-top:16px}
-.btn-row .btn{flex:1}
+.btn-ghost{background:none;border:1.5px dashed var(--border2);color:var(--text2)}
+.btn-ghost:hover{border-color:var(--accent);color:var(--accent)}
+.btn-sm{padding:6px 10px;font-size:12px;width:auto}
 .btn[disabled]{opacity:.4;pointer-events:none}
-
-.type-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:14px}
-.type-card{background:var(--bg3);border:1.5px solid var(--border2);border-radius:var(--r);padding:14px 10px;cursor:pointer;text-align:center;transition:.2s;user-select:none}
+.btn-row{display:flex;gap:8px;margin-top:14px}
+.btn-row .btn{flex:1}
+/* TYPE GRID */
+.type-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:12px}
+.type-grid3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:6px;margin-bottom:12px}
+.type-card{background:var(--bg3);border:1.5px solid var(--border2);border-radius:var(--r);padding:12px 8px;cursor:pointer;text-align:center;transition:.2s;user-select:none}
 .type-card.selected{border-color:var(--accent);background:var(--accentDim)}
 .type-card:active{transform:scale(.97)}
-.type-card-icon{font-size:22px;margin-bottom:6px}
-.type-card-name{font-size:13px;font-weight:600}
-.type-card-sub{font-size:11px;color:var(--text3);margin-top:2px}
-
-.mat-card{background:var(--bg3);border:1.5px solid var(--border);border-radius:var(--r);padding:12px;cursor:pointer;transition:.2s;margin-bottom:8px;display:flex;align-items:center;gap:10px;user-select:none}
+.type-card-icon{font-size:20px;margin-bottom:4px}
+.type-card-name{font-size:12px;font-weight:600}
+.type-card-sub{font-size:10px;color:var(--text3);margin-top:1px}
+/* NAV */
+.nav{display:flex;align-items:center;gap:8px;margin-bottom:18px}
+.nav-back{background:none;border:none;color:var(--text2);cursor:pointer;font-size:13px;font-family:inherit;display:flex;align-items:center;gap:4px;padding:0}
+.nav-back:active{color:var(--accent)}
+.nav-title{font-size:15px;font-weight:700;flex:1}
+/* SECTION */
+.section-title{font-size:11px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.5px;margin-bottom:8px;margin-top:2px}
+/* LAYER ITEM */
+.layer-item{background:var(--bg3);border:1px solid var(--border);border-radius:var(--r2);padding:11px 12px;margin-bottom:8px}
+.layer-header{display:flex;align-items:center;gap:8px;margin-bottom:8px}
+.layer-badge{padding:2px 8px;border-radius:10px;font-size:11px;font-weight:700;flex-shrink:0}
+.badge-primer{background:rgba(245,166,35,.15);color:var(--warning)}
+.badge-enamel{background:rgba(91,127,255,.15);color:var(--accent2)}
+.badge-lacquer{background:rgba(180,127,255,.15);color:var(--purple)}
+.badge-thinner{background:rgba(61,214,140,.15);color:var(--success)}
+.badge-custom{background:rgba(255,255,255,.08);color:var(--text2)}
+.layer-name{font-size:13px;font-weight:600;flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.layer-actions{display:flex;gap:4px;flex-shrink:0}
+.icon-btn{width:28px;height:28px;border-radius:6px;border:none;background:var(--bg4);color:var(--text2);cursor:pointer;display:flex;align-items:center;justify-content:center;font-size:13px;transition:.15s}
+.icon-btn:hover{background:var(--danger);color:#fff}
+.icon-btn.up-btn:hover{background:var(--accent);color:#fff}
+.layer-stats{display:flex;gap:6px;flex-wrap:wrap}
+.layer-stat{font-size:11px;color:var(--text3);background:var(--bg4);padding:2px 7px;border-radius:8px}
+.layer-price{font-size:13px;font-weight:700;color:var(--success);margin-top:6px}
+/* RESULT TABLE */
+.result-table{background:var(--bg3);border-radius:var(--r2);overflow:hidden;margin-bottom:12px}
+.rt-row{display:flex;align-items:center;padding:10px 12px;border-bottom:1px solid var(--border);gap:8px}
+.rt-row:last-child{border-bottom:none}
+.rt-badge{width:8px;height:8px;border-radius:50%;flex-shrink:0}
+.rt-name{flex:1;font-size:13px;min-width:0}
+.rt-sub{font-size:11px;color:var(--text3)}
+.rt-val{font-size:13px;font-weight:600;flex-shrink:0}
+.rt-total{background:var(--accentDim);border-top:1px solid rgba(91,127,255,.3)!important}
+.rt-total .rt-name{font-weight:700;color:var(--accent2)}
+.rt-total .rt-val{color:var(--accent2)}
+/* METRIC GRID */
+.metric-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:12px}
+.metric{background:var(--bg3);border-radius:var(--r2);padding:12px;text-align:center}
+.metric-val{font-size:20px;font-weight:700;color:var(--accent2)}
+.metric-label{font-size:11px;color:var(--text3);margin-top:2px}
+/* PRICE BIG */
+.price-hero{background:linear-gradient(135deg,var(--bg3),var(--bg4));border:1px solid var(--border2);border-radius:var(--r);padding:20px;text-align:center;margin-bottom:12px}
+.price-hero-val{font-size:32px;font-weight:700;color:var(--success)}
+.price-hero-sub{font-size:12px;color:var(--text3);margin-top:4px}
+/* MAT CARD */
+.mat-card{background:var(--bg3);border:1.5px solid var(--border);border-radius:var(--r);padding:11px;cursor:pointer;transition:.2s;margin-bottom:7px;display:flex;align-items:center;gap:9px;user-select:none}
 .mat-card.selected{border-color:var(--accent);background:var(--accentDim)}
 .mat-card:active{transform:scale(.98)}
-.mat-badge{width:36px;height:36px;border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:700;flex-shrink:0}
+.mat-badge{width:34px;height:34px;border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;flex-shrink:0}
 .mat-info{flex:1;min-width:0}
 .mat-name{font-size:13px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .mat-sub{font-size:11px;color:var(--text3);margin-top:1px}
-.mat-price{font-size:13px;font-weight:600;color:var(--accent2);flex-shrink:0}
-
-.result-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:16px}
-.metric{background:var(--bg3);border-radius:var(--r2);padding:12px;text-align:center}
-.metric-val{font-size:20px;font-weight:700;color:var(--accent2)}
-.metric-label{font-size:11px;color:var(--text3);margin-top:3px}
-.price-big{font-size:28px;font-weight:700;color:var(--success);text-align:center;padding:16px 0}
-.price-label{font-size:12px;color:var(--text3);text-align:center;margin-top:-8px;margin-bottom:16px}
-
-.breakdown{background:var(--bg3);border-radius:var(--r2);overflow:hidden;margin-bottom:16px}
-.brow{display:flex;justify-content:space-between;align-items:center;padding:10px 14px;border-bottom:1px solid var(--border)}
-.brow:last-child{border-bottom:none}
-.brow-label{font-size:12px;color:var(--text2)}
-.brow-val{font-size:13px;font-weight:600}
-
-.alert{border-radius:var(--r2);padding:10px 12px;font-size:12px;margin-bottom:12px;display:flex;gap:8px;align-items:flex-start}
+.mat-price-tag{font-size:12px;font-weight:600;color:var(--accent2);flex-shrink:0;text-align:right}
+/* ALERTS */
+.alert{border-radius:var(--r2);padding:9px 11px;font-size:12px;margin-bottom:10px;display:flex;gap:7px;align-items:flex-start}
 .alert-info{background:rgba(91,127,255,.1);border:1px solid rgba(91,127,255,.25);color:var(--accent2)}
 .alert-warn{background:rgba(245,166,35,.1);border:1px solid rgba(245,166,35,.25);color:var(--warning)}
-.alert-success{background:rgba(61,214,140,.1);border:1px solid rgba(61,214,140,.25);color:var(--success)}
-
-.tag{display:inline-block;padding:3px 10px;border-radius:20px;font-size:11px;font-weight:600}
+/* TAGS */
+.tag{display:inline-block;padding:2px 8px;border-radius:12px;font-size:11px;font-weight:600}
 .tag-1c{background:rgba(91,127,255,.15);color:var(--accent2)}
 .tag-2c{background:rgba(61,214,140,.15);color:var(--success)}
-
-.section-title{font-size:11px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.5px;margin-bottom:10px;margin-top:4px}
-
-.check-row{display:flex;align-items:center;gap:8px;cursor:pointer;padding:8px 0}
-.check-row input[type=checkbox]{width:17px;height:17px;flex-shrink:0;accent-color:var(--accent)}
-
-.nav{display:flex;align-items:center;gap:8px;margin-bottom:20px}
-.nav-back{background:none;border:none;color:var(--text2);cursor:pointer;font-size:13px;font-family:inherit;display:flex;align-items:center;gap:4px;padding:0;line-height:1}
-.nav-back:active{color:var(--accent)}
-.nav-title{font-size:15px;font-weight:700;flex:1}
-
-.snack{position:fixed;bottom:24px;left:50%;transform:translateX(-50%);background:var(--bg4);border:1px solid var(--border2);color:var(--text);padding:10px 20px;border-radius:24px;font-size:13px;font-weight:500;z-index:999;opacity:0;transition:.3s;pointer-events:none;white-space:nowrap;max-width:90vw;text-overflow:ellipsis;overflow:hidden}
+/* SNACK */
+.snack{position:fixed;bottom:22px;left:50%;transform:translateX(-50%);background:var(--bg4);border:1px solid var(--border2);color:var(--text);padding:9px 18px;border-radius:22px;font-size:13px;font-weight:500;z-index:999;opacity:0;transition:.3s;pointer-events:none;white-space:nowrap;max-width:90vw}
 .snack.show{opacity:1}
-
-.empty{text-align:center;padding:40px 16px;color:var(--text3)}
-.empty-icon{font-size:36px;margin-bottom:8px}
-
+/* EMPTY */
+.empty{text-align:center;padding:36px 16px;color:var(--text3)}
+.empty-icon{font-size:34px;margin-bottom:8px}
+/* DIVIDER */
+.divider{height:1px;background:var(--border);margin:12px 0}
+/* SCHEME TAG */
+.scheme-tag{display:inline-flex;align-items:center;gap:4px;padding:3px 8px;border-radius:8px;font-size:11px;font-weight:600;background:var(--bg4);color:var(--text2)}
 ::-webkit-scrollbar{width:3px}
 ::-webkit-scrollbar-thumb{background:var(--border2);border-radius:2px}
-
-.fab{position:fixed;bottom:24px;right:16px;width:52px;height:52px;border-radius:50%;background:var(--accent);color:#fff;font-size:24px;display:flex;align-items:center;justify-content:center;cursor:pointer;box-shadow:0 4px 20px rgba(91,127,255,.4);border:none;z-index:50;transition:.2s}
-.fab:active{transform:scale(.92)}
+/* HOME MENU */
+.menu-item{background:var(--bg2);border:1px solid var(--border);border-radius:var(--r);padding:13px 14px;cursor:pointer;display:flex;align-items:center;gap:11px;margin-bottom:8px;transition:.15s;user-select:none}
+.menu-item:active{transform:scale(.98)}
+.menu-icon{font-size:22px;flex-shrink:0}
+.menu-text{flex:1}
+.menu-title{font-size:14px;font-weight:600}
+.menu-sub{font-size:12px;color:var(--text3);margin-top:1px}
+.menu-arrow{color:var(--text3);font-size:18px}
 </style>
 </head>
 <body>
-<div id="scroll-root">
-  <div class="app"><div id="root"></div></div>
-</div>
+<div id="scroll-root"><div class="app"><div id="root"></div></div></div>
 <div class="snack" id="snack"></div>
-
 <script>
-/* ===== TELEGRAM INIT ===== */
+/* ===== TELEGRAM ===== */
 const tg = window.Telegram?.WebApp;
-if (tg) {
-  tg.ready();
-  tg.expand();
-  // Используем тему Telegram если доступна
-  const c = tg.colorScheme;
-  if (c === 'light') {
-    document.documentElement.style.setProperty('--bg', '#f2f4f8');
-    document.documentElement.style.setProperty('--bg2', '#ffffff');
-    document.documentElement.style.setProperty('--bg3', '#f0f2f7');
-    document.documentElement.style.setProperty('--bg4', '#e4e8f0');
-    document.documentElement.style.setProperty('--text', '#1a1d27');
-    document.documentElement.style.setProperty('--text2', '#4a5270');
-    document.documentElement.style.setProperty('--text3', '#8892b0');
-    document.documentElement.style.setProperty('--border', 'rgba(0,0,0,.07)');
-    document.documentElement.style.setProperty('--border2', 'rgba(0,0,0,.12)');
-  }
-}
+if(tg){tg.ready();tg.expand();}
 
 /* ===== STORAGE ===== */
-const STORAGE_KEY = 'polcoat_v3';
+const SK = 'zavod_neva_v1';
+function load(){try{const d=localStorage.getItem(SK);return d?JSON.parse(d):null}catch{return null}}
+function save(s){try{localStorage.setItem(SK,JSON.stringify(s))}catch{}}
 
-const DEFAULT_TEMPLATES = [
-  {id:'t1',name:'Эпоксидная грунтовка ЭП-001',type:'1c',color:'Прозрачный',price:160,
-   consumption:200,layers:2,primer_consumption:150,container_type:'Ведро',container_weight:25,
-   thinner:'Р-646',thinnerPct:10,comment:'Укрепляющий грунт для бетона',notes:''},
-  {id:'t2',name:'Полиуретановая эмаль ПУ-220',type:'2c',color:'RAL 7040 Серый',price:220,
-   consumption:300,layers:3,primer_consumption:180,container_type:'Комплект',container_weight:21,
-   base:18,hardener:3,thinner:'Уайт-спирит',thinnerPct:5,comment:'Финишное покрытие',notes:''},
-  {id:'t3',name:'Эпоксидная краска ЭП-140',type:'2c',color:'RAL 7035 Светло-серый',price:185,
-   consumption:350,layers:2,primer_consumption:200,container_type:'Комплект',container_weight:20,
-   base:16,hardener:4,thinner:'Ксилол',thinnerPct:8,comment:'Для производственных помещений',notes:''},
-  {id:'t4',name:'Акриловая эмаль АК-511',type:'1c',color:'RAL 7042 Серый дорожный',price:120,
-   consumption:250,layers:3,primer_consumption:160,container_type:'Ведро',container_weight:20,
-   thinner:'Вода',thinnerPct:15,comment:'Водная база, низкий запах',notes:''},
-  {id:'t5',name:'Полиуретановый лак ПУ-ЛАК',type:'2c',color:'Бесцветный',price:280,
-   consumption:180,layers:2,primer_consumption:120,container_type:'Комплект',container_weight:10,
-   base:8,hardener:2,thinner:'Растворитель 646',thinnerPct:5,comment:'Финишный защитный лак',notes:''},
+/* ===== КАТАЛОГ ПРОДУКТОВ ===== */
+// category: 'primer' | 'enamel' | 'lacquer' | 'thinner'
+// comp: '1c' | '2c'
+// для 2c: base (кг), hardener (кг) — размер комплекта
+// price: ₽/кг
+// consumption: г/м² за 1 слой
+const DEFAULT_CATALOG = [
+  // ГРУНТЫ
+  {id:'p1',category:'primer',comp:'1c',name:'Грунт ЭП-0199',color:'Серый',price:148,consumption:120,container:25,thinner_id:'th1',thinnerPct:10,comment:'Эпоксидный однокомп. грунт'},
+  {id:'p2',category:'primer',comp:'1c',name:'Грунт ГФ-021',color:'Красно-коричневый',price:95,consumption:100,container:20,thinner_id:'th2',thinnerPct:15,comment:'Алкидный грунт универсальный'},
+  {id:'p3',category:'primer',comp:'2c',name:'Грунт ЭП-0280 2К',color:'Серый',price:185,consumption:130,container:null,base:16,hardener:4,thinner_id:'th1',thinnerPct:8,comment:'Эпоксидный двухкомп. грунт'},
+  // ЭМАЛИ
+  {id:'e1',category:'enamel',comp:'1c',name:'Эмаль ПФ-115',color:'Серый (RAL 7040)',price:112,consumption:150,container:20,thinner_id:'th2',thinnerPct:15,comment:'Алкидная эмаль'},
+  {id:'e2',category:'enamel',comp:'2c',name:'Эмаль ЭП-140 2К',color:'Светло-серый (RAL 7035)',price:195,consumption:180,container:null,base:16,hardener:4,thinner_id:'th1',thinnerPct:8,comment:'Эпоксидная эмаль для полов'},
+  {id:'e3',category:'enamel',comp:'2c',name:'Эмаль ПУ-1179 2К',color:'Серый (RAL 7040)',price:240,consumption:160,container:null,base:18,hardener:3,thinner_id:'th3',thinnerPct:5,comment:'Полиуретановая финишная эмаль'},
+  {id:'e4',category:'enamel',comp:'1c',name:'Эмаль АК-1028',color:'Серый дорожный',price:118,consumption:140,container:20,thinner_id:'th4',thinnerPct:10,comment:'Акриловая эмаль для бетонных полов'},
+  // ЛАКИ
+  {id:'l1',category:'lacquer',comp:'2c',name:'Лак ПУ-0140 2К',color:'Бесцветный',price:275,consumption:120,container:null,base:8,hardener:2,thinner_id:'th3',thinnerPct:5,comment:'Полиуретановый защитный лак'},
+  {id:'l2',category:'lacquer',comp:'1c',name:'Лак ЭП-730',color:'Бесцветный',price:210,consumption:100,container:10,thinner_id:'th1',thinnerPct:10,comment:'Эпоксидный финишный лак'},
+  // РАЗБАВИТЕЛИ
+  {id:'th1',category:'thinner',comp:'1c',name:'Растворитель Р-646',color:'—',price:85,consumption:0,container:10,thinner_id:null,thinnerPct:0,comment:'Для эпоксидных материалов'},
+  {id:'th2',category:'thinner',comp:'1c',name:'Уайт-спирит',color:'—',price:55,consumption:0,container:10,thinner_id:null,thinnerPct:0,comment:'Для алкидных материалов'},
+  {id:'th3',category:'thinner',comp:'1c',name:'Растворитель 650',color:'—',price:90,consumption:0,container:10,thinner_id:null,thinnerPct:0,comment:'Для полиуретановых материалов'},
+  {id:'th4',category:'thinner',comp:'1c',name:'Вода дистиллированная',color:'—',price:25,consumption:0,container:5,thinner_id:null,thinnerPct:0,comment:'Для водных материалов'},
 ];
 
-function loadData() {
-  try { const d = localStorage.getItem(STORAGE_KEY); return d ? JSON.parse(d) : null; } catch { return null; }
-}
-function saveData(state) {
-  try { localStorage.setItem(STORAGE_KEY, JSON.stringify(state)); } catch {}
-}
+// Готовые схемы покрытия
+const DEFAULT_SCHEMES = [
+  {id:'s1',name:'Эпоксидная 2К (3 слоя)',desc:'Грунт 1К + Эмаль 2К×2',layers:[
+    {productId:'p1',layers:1,customName:null},
+    {productId:'e2',layers:2,customName:null},
+  ]},
+  {id:'s2',name:'Алкидная 1К (3 слоя)',desc:'Грунт 1К + Эмаль 1К×2',layers:[
+    {productId:'p2',layers:1,customName:null},
+    {productId:'e1',layers:2,customName:null},
+  ]},
+  {id:'s3',name:'Полиуретановая 2К (4 слоя)',desc:'Грунт 2К + Эмаль 2К×2 + Лак 2К',layers:[
+    {productId:'p3',layers:1,customName:null},
+    {productId:'e3',layers:2,customName:null},
+    {productId:'l1',layers:1,customName:null},
+  ]},
+  {id:'s4',name:'Комбинированная (3 слоя)',desc:'Грунт 2К + Эмаль 1К×2',layers:[
+    {productId:'p3',layers:1,customName:null},
+    {productId:'e4',layers:2,customName:null},
+  ]},
+];
 
+const saved = load();
+const state = {
+  screen:'home',
+  catalog: saved?.catalog || JSON.parse(JSON.stringify(DEFAULT_CATALOG)),
+  schemes: saved?.schemes || JSON.parse(JSON.stringify(DEFAULT_SCHEMES)),
+  proposals: saved?.proposals || [],
+  // Текущий КП
+  kp:{
+    name:'',area:'',
+    layers:[], // {productId, layers, customName, customPrice, customConsumption, customComp}
+  
+    margin:0, // %
+    note:'',
+  },
+  editProduct:null,
+  editScheme:null,
+  viewProposal:null,
+  // UI state для построения КП
+  addingLayer:false,
+  addLayerCategory:'primer',
+};
 
-const saved = loadData();
-const state = (() => {
-  return {
-    screen: 'home',
-    templates: saved?.templates || JSON.parse(JSON.stringify(DEFAULT_TEMPLATES)),
-    proposals: saved?.proposals || [],
-    current: { name: '', area: '', type: '1c', templateId: '', params: {} },
-    editTemplate: null,
-    viewProposal: null,
-  };
-})();
+function persist(){save({catalog:state.catalog,schemes:state.schemes,proposals:state.proposals})}
+function genId(){return Date.now().toString(36)+Math.random().toString(36).slice(2,5)}
 
-function persist() { saveData({ templates: state.templates, proposals: state.proposals }); }
-function genId() { return Date.now().toString(36) + Math.random().toString(36).slice(2, 6); }
+/* ===== HELPERS ===== */
+function esc(s){return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;')}
+function fmtN(n,dec=2){return (+n||0).toFixed(dec)}
+function fmtRub(n){return Math.round(n||0).toLocaleString('ru')+' ₽'}
+function show(msg){const el=document.getElementById('snack');el.textContent=msg;el.classList.add('show');clearTimeout(el._t);el._t=setTimeout(()=>el.classList.remove('show'),2500)}
+function nav(screen,extra={}){state.screen=screen;Object.assign(state,extra);render();document.getElementById('scroll-root').scrollTop=0}
 
+function getProduct(id){return state.catalog.find(p=>p.id===id)}
+function catLabel(c){return c==='primer'?'Грунт':c==='enamel'?'Эмаль':c==='lacquer'?'Лак':c==='thinner'?'Разбавитель':'Прочее'}
+function catBadgeClass(c){return c==='primer'?'badge-primer':c==='enamel'?'badge-enamel':c==='lacquer'?'badge-lacquer':c==='thinner'?'badge-thinner':'badge-custom'}
+function catColor(c){return c==='primer'?'#f5a623':c==='enamel'?'#7c9fff':c==='lacquer'?'#b47fff':c==='success'?'#3dd68c':'#9ba3bf'}
 
-/* ===== CURRENCY HELPERS ===== */
-function curSymbol() { return '₽'; }
-function kztToDisplay(v) { return Math.round(v); }
-function displayToKzt(v) { return v; }
-function fmtPrice(rub) { return Math.round(rub).toLocaleString('ru') + ' ₽'; }
-function pricePerKgDisplay(rub) { return Math.round(rub).toLocaleString('ru') + ' ₽/кг'; }
+/* ===== РАСЧЁТ ОДНОГО СЛОЯ ===== */
+function calcLayer(kpLayer, area){
+  const a = parseFloat(area)||0;
+  const prod = kpLayer.productId ? getProduct(kpLayer.productId) : null;
+  const price = kpLayer.customPrice != null ? kpLayer.customPrice : (prod?.price||0);
+  const cons = kpLayer.customConsumption != null ? kpLayer.customConsumption : (prod?.consumption||0);
+  const comp = kpLayer.customComp || prod?.comp || '1c';
+  const layerCount = kpLayer.layers||1;
+  const name = kpLayer.customName || prod?.name || 'Позиция';
+  const category = kpLayer.category || prod?.category || 'custom';
 
-/* ===== CALC ===== */
-function calcProposal(area, tpl) {
-  const a = parseFloat(area) || 0;
-  if (!a || !tpl) return null;
-  if (tpl.type === '1c') {
-    const primerTotal = a * (tpl.primer_consumption / 1000);
-    const mainTotal = a * (tpl.consumption / 1000) * (tpl.layers - 1);
-    const totalKg = primerTotal + mainTotal;
-    const thinnerKg = primerTotal * (tpl.thinnerPct / 100);
-    const cw = parseFloat(tpl.container_weight) || 25;
-    const containers = Math.ceil(totalKg / cw);
-    const actualKg = containers * cw;
-    const costMat = Math.round(actualKg * tpl.price / 1000 * 100) / 100;
-    return { type: '1c', area: a, primerTotal: +primerTotal.toFixed(2), mainTotal: +mainTotal.toFixed(2),
-      totalKg: +totalKg.toFixed(2), thinnerKg: +thinnerKg.toFixed(2), containers, actualKg,
-      costKzt: Math.round(costMat), containerWeight: cw, layers: tpl.layers };
+  // Разбавитель
+  const thinnerPct = prod?.thinnerPct||0;
+  const thinnerId = prod?.thinner_id||null;
+  const thinnerProd = thinnerId ? getProduct(thinnerId) : null;
+
+  // Расход основы/материала (кг) на всю площадь и все слои
+  // Для 2К: расход считается только по ОСНОВЕ, кратно комплекту
+  // Для 1К: расход кратно таре (container)
+  const baseConsKg = a * (cons/1000) * layerCount; // теоретический расход основы/материала
+
+  let containers, kits, actualMatKg, costMat, totalKg;
+
+  if(comp==='2c' && prod?.base){
+    const base = parseFloat(prod.base)||18;
+    const hardener = parseFloat(prod.hardener)||3;
+    // Кол-во комплектов кратно 1, делим по основе
+    kits = Math.ceil(baseConsKg / base);
+    // Фактический расход: кол-во компл × (основа + отвердитель)
+    actualMatKg = kits * (base + hardener);
+    // Цена считается от фактической массы (основа + отвердитель)
+    costMat = actualMatKg * price / 1000;
+    containers = null;
+    totalKg = actualMatKg;
   } else {
-    const primerTotal = a * (tpl.primer_consumption / 1000);
-    const mainTotal = a * (tpl.consumption / 1000) * (tpl.layers - 1);
-    const totalBase = primerTotal + mainTotal;
-    const base = parseFloat(tpl.base) || 18;
-    const hardener = parseFloat(tpl.hardener) || 3;
-    const kitsNeeded = Math.ceil(totalBase / base);
-    const totalKg = kitsNeeded * (base + hardener);
-    const thinnerKg = primerTotal * (tpl.thinnerPct / 100);
-    const costMat = Math.round(totalKg * tpl.price / 1000 * 100) / 100;
-    return { type: '2c', area: a, primerTotal: +primerTotal.toFixed(2), mainTotal: +mainTotal.toFixed(2),
-      totalBase: +totalBase.toFixed(2), thinnerKg: +thinnerKg.toFixed(2), kitsNeeded, basePerKit: base,
-      hardenerPerKit: hardener, totalKg: +totalKg.toFixed(2), costKzt: Math.round(costMat), layers: tpl.layers };
+    const cw = parseFloat(prod?.container)||25;
+    // Кол-во тар кратно 1, в большую сторону
+    containers = Math.ceil(baseConsKg / cw);
+    actualMatKg = containers * cw;
+    costMat = actualMatKg * price / 1000;
+    kits = null;
+    totalKg = actualMatKg;
   }
+
+  // Разбавитель считается от теоретического расхода основы (не от округлённого)
+  const thinnerKg = baseConsKg * (thinnerPct/100);
+  // Стоимость разбавителя
+  const thinnerCost = thinnerKg * (thinnerProd?.price||0) / 1000;
+
+  return {name, category, comp, price, cons, layerCount,
+    baseConsKg:+baseConsKg.toFixed(2),   // теор. расход до округления
+    totalKg:+totalKg.toFixed(2),          // фактический расход (кратно таре/комплекту)
+    thinnerKg:+thinnerKg.toFixed(3), thinnerName:thinnerProd?.name||'',
+    thinnerCost:Math.round(thinnerCost), containers, kits,
+    costMat:Math.round(costMat), prod, kpLayer};
 }
 
-/* ===== UI UTILS ===== */
-function esc(s) {
-  return String(s || '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+/* ===== РАСЧЁТ КП ===== */
+function calcKP(){
+  const kp = state.kp;
+  const area = parseFloat(kp.area)||0;
+  const layers = kp.layers.map(l=>calcLayer(l,area));
+  const totalMat = layers.reduce((s,l)=>s+l.costMat+l.thinnerCost,0);
+  const total = Math.round(totalMat);
+  const matKg = layers.reduce((s,l)=>s+l.totalKg,0);
+  const thinnerKgTotal = layers.reduce((s,l)=>s+(l.thinnerKg||0),0);
+  const totalKg = matKg + thinnerKgTotal;
+  const matCost = layers.reduce((s,l)=>s+l.costMat,0);
+  const thinnerCostTotal = layers.reduce((s,l)=>s+l.thinnerCost,0);
+  const pricePerKg = totalKg>0 ? total/totalKg : 0;
+  const pricePerKgMat = matKg>0 ? matCost/matKg : 0;
+  const pricePerM2 = area>0 ? total/area : 0;
+  return {area, layers, totalMat:Math.round(totalMat), total,
+    totalKg:+totalKg.toFixed(2), matKg:+matKg.toFixed(2), thinnerKgTotal:+thinnerKgTotal.toFixed(2),
+    matCost:Math.round(matCost), thinnerCostTotal:Math.round(thinnerCostTotal),
+    pricePerKg:+pricePerKg.toFixed(2), pricePerKgMat:+pricePerKgMat.toFixed(2), pricePerM2:+pricePerM2.toFixed(2)};
 }
-function show(msg) {
-  const el = document.getElementById('snack');
-  el.textContent = msg; el.classList.add('show');
-  clearTimeout(el._t); el._t = setTimeout(() => el.classList.remove('show'), 2400);
-}
-function nav(screen, extra = {}) {
-  state.screen = screen; Object.assign(state, extra);
-  render();
-  const sr = document.getElementById('scroll-root');
-  if (sr) sr.scrollTop = 0;
-}
-
-/* ===== STEPPER ===== */
-function stepper(active) {
-  const steps = ['1', '2', '3', '✓'];
-  return `<div class="stepper">${steps.map((s, i) => {
-    const cls = i < active ? 'done' : i === active ? 'active' : '';
-    const line = i < steps.length - 1 ? `<div class="step-line${i < active ? ' done' : ''}"></div>` : '';
-    return `<div class="step-dot ${cls}">${i < active ? '✓' : s}</div>${line}`;
-  }).join('')}</div>`;
-}
-
 
 /* ===== RENDERS ===== */
-function renderHome() {
-  const p = state.proposals;
+function render(){
+  const root=document.getElementById('root');
+  const s=state.screen;
+  if(s==='home') root.innerHTML=renderHome();
+  else if(s==='kp_start') root.innerHTML=renderKPStart();
+  else if(s==='kp_scheme') root.innerHTML=renderKPScheme();
+  else if(s==='kp_build') root.innerHTML=renderKPBuild();
+  else if(s==='kp_add_layer') root.innerHTML=renderAddLayer();
+  else if(s==='kp_result') root.innerHTML=renderKPResult();
+  else if(s==='proposals') root.innerHTML=renderProposals();
+  else if(s==='view_proposal') root.innerHTML=renderViewProposal();
+  else if(s==='catalog') root.innerHTML=renderCatalog();
+  else if(s==='edit_product') root.innerHTML=renderEditProduct();
+  else if(s==='schemes') root.innerHTML=renderSchemes();
+  bindEvents();
+}
+
+function renderHome(){
+  const p=state.proposals;
   return `
   <div class="header">
     <div class="logo">🏭</div>
-    <div style="flex:1">
-      <div class="header-title">Завод Нева</div>
-      <div class="header-sub">Расчёт КП · цены в рублях</div>
-    </div>
+    <div><div class="header-title">Завод Нева</div>
+    <div class="header-sub">Расчёт коммерческих предложений</div></div>
   </div>
-  <div class="type-grid" style="margin-bottom:16px">
-    <div class="type-card" id="btn-new">
-      <div class="type-card-icon">📋</div>
-      <div class="type-card-name">Новое КП</div>
-      <div class="type-card-sub">Создать расчёт</div>
-    </div>
-    <div class="type-card" id="btn-proposals">
-      <div class="type-card-icon">📁</div>
-      <div class="type-card-name">Мои КП</div>
-      <div class="type-card-sub">${p.length} сохранено</div>
-    </div>
+  <div class="menu-item" id="menu-new-kp">
+    <div class="menu-icon">📋</div>
+    <div class="menu-text"><div class="menu-title">Новое КП</div><div class="menu-sub">Создать расчёт покрытия</div></div>
+    <div class="menu-arrow">›</div>
   </div>
-  <div class="card" id="btn-templates" style="cursor:pointer;display:flex;align-items:center;gap:10px;margin-bottom:12px">
-    <div style="font-size:22px">🗂</div>
-    <div><div style="font-weight:600;font-size:14px">База шаблонов</div>
-    <div style="font-size:12px;color:var(--text3)">${state.templates.length} материалов</div></div>
-    <div style="margin-left:auto;color:var(--text3);font-size:20px">›</div>
+  <div class="menu-item" id="menu-proposals">
+    <div class="menu-icon">📁</div>
+    <div class="menu-text"><div class="menu-title">Мои КП</div><div class="menu-sub">${p.length} сохранено</div></div>
+    <div class="menu-arrow">›</div>
   </div>
-  ${p.length > 0 ? `
-  <div style="margin-top:20px">
-    <div class="section-title">Последние КП</div>
-    ${p.slice(-3).reverse().map(pr => `
-    <div class="mat-card" data-pid="${pr.id}">
-      <div class="mat-badge" style="background:var(--accentDim);color:var(--accent2)">КП</div>
-      <div class="mat-info"><div class="mat-name">${esc(pr.name)}</div>
-      <div class="mat-sub">${pr.area} м² · ${esc(pr.matName)}</div></div>
-      <div class="mat-price">${fmtPrice(pr.costKzt || pr.total || 0)}</div>
-    </div>`).join('')}
-  </div>` : ''}`;
+  <div class="menu-item" id="menu-catalog">
+    <div class="menu-icon">🗂</div>
+    <div class="menu-text"><div class="menu-title">Каталог материалов</div><div class="menu-sub">${state.catalog.filter(c=>c.category!=='thinner').length} продуктов · ${state.catalog.filter(c=>c.category==='thinner').length} разбавителей</div></div>
+    <div class="menu-arrow">›</div>
+  </div>
+  <div class="menu-item" id="menu-schemes">
+    <div class="menu-icon">🎨</div>
+    <div class="menu-text"><div class="menu-title">Схемы покрытия</div><div class="menu-sub">${state.schemes.length} готовых схем</div></div>
+    <div class="menu-arrow">›</div>
+  </div>
+  ${p.length>0?`
+  <div class="divider"></div>
+  <div class="section-title">Последние КП</div>
+  ${p.slice(-3).reverse().map(pr=>`
+  <div class="mat-card" data-pid="${pr.id}">
+    <div class="mat-badge" style="background:var(--accentDim);color:var(--accent2);font-size:10px">КП</div>
+    <div class="mat-info"><div class="mat-name">${esc(pr.name)}</div>
+    <div class="mat-sub">${pr.area} м² · ${pr.layerCount} позиций · ${new Date(pr.date).toLocaleDateString('ru')}</div></div>
+    <div class="mat-price-tag">${fmtRub(pr.total)}</div>
+  </div>`).join('')}`:''}`;
 }
 
-function renderStep1() {
-  const c = state.current;
-  return `${stepper(0)}
-  <div class="nav"><div class="nav-title">Объект и площадь</div></div>
+function renderKPStart(){
+  const kp=state.kp;
+  return `
+  <div class="nav"><button class="nav-back" id="back-home">← Назад</button><div class="nav-title">Новое КП</div></div>
   <div class="card">
     <div class="field"><label>Название объекта / клиент</label>
-      <input id="inp-name" type="text" placeholder="Напр: ООО Альфа, склад №2" value="${esc(c.name)}"></div>
+      <input id="kp-name" placeholder="Напр: ООО Альфа, склад №3" value="${esc(kp.name)}"></div>
     <div class="field"><label>Площадь (м²)</label>
-      <input id="inp-area" type="number" inputmode="decimal" placeholder="1000" min="1" value="${c.area}"></div>
+      <input id="kp-area" type="number" inputmode="decimal" placeholder="500" value="${kp.area}"></div>
   </div>
-  <div class="section-title">Тип системы</div>
+  <div class="section-title">Способ формирования системы покрытия</div>
   <div class="type-grid">
-    <div class="type-card${c.type === '1c' ? ' selected' : ''}" id="type-1c">
-      <div class="type-card-icon">🟦</div>
-      <div class="type-card-name">Однокомпонентная</div>
-      <div class="type-card-sub">Без отвердителя</div></div>
-    <div class="type-card${c.type === '2c' ? ' selected' : ''}" id="type-2c">
-      <div class="type-card-icon">🟩</div>
-      <div class="type-card-name">Двухкомпонентная</div>
-      <div class="type-card-sub">Основа + отвердитель</div></div>
-  </div>
-  <div class="btn-row"><button class="btn btn-primary" id="btn-next1">Далее →</button></div>`;
-}
-
-function renderStep2() {
-  const c = state.current;
-  const tpls = state.templates.filter(t => t.type === c.type);
-  return `${stepper(1)}
-  <div class="nav"><button class="nav-back" id="btn-back2">← Назад</button>
-    <div class="nav-title">Выбор материала</div></div>
-  <div class="alert alert-info">💡 Выберите шаблон. Все параметры можно отредактировать на следующем шаге.</div>
-  ${tpls.length === 0 ? `<div class="empty"><div class="empty-icon">📦</div>
-    Нет шаблонов типа ${c.type === '1c' ? '1К' : '2К'}.<br>Добавьте в базе шаблонов.</div>` : ''}
-  ${tpls.map(t => `
-  <div class="mat-card${c.templateId === t.id ? ' selected' : ''}" data-tid="${t.id}">
-    <div class="mat-badge" style="background:${t.type === '1c' ? 'rgba(91,127,255,.2)' : 'rgba(61,214,140,.2)'};
-      color:${t.type === '1c' ? 'var(--accent2)' : 'var(--success)'}">
-      ${t.type === '1c' ? '1К' : '2К'}</div>
-    <div class="mat-info"><div class="mat-name">${esc(t.name)}</div>
-      <div class="mat-sub">${esc(t.color)} · ${t.layers} сл. · ${t.consumption} г/м²</div></div>
-    <div class="mat-price">${pricePerKgDisplay(t.price)}</div>
-  </div>`).join('')}
-  <div class="btn-row" style="margin-top:16px">
-    <button class="btn btn-secondary" id="btn-back2b">← Назад</button>
-    <button class="btn btn-primary" id="btn-next2" ${!c.templateId ? 'disabled' : ''}>Далее →</button>
+    <div class="type-card" id="mode-scheme">
+      <div class="type-card-icon">🎨</div>
+      <div class="type-card-name">Готовая схема</div>
+      <div class="type-card-sub">Выбрать из списка</div>
+    </div>
+    <div class="type-card" id="mode-manual">
+      <div class="type-card-icon">🔧</div>
+      <div class="type-card-name">Вручную</div>
+      <div class="type-card-sub">Собрать слой за слоем</div>
+    </div>
   </div>`;
 }
 
-function renderStep3() {
-  const c = state.current;
-  const tpl = state.templates.find(t => t.id === c.templateId);
-  const p = c.params;
-  const is2c = tpl && tpl.type === '2c';
-  return `${stepper(2)}
-  <div class="nav"><button class="nav-back" id="btn-back3">← Назад</button>
-    <div class="nav-title">Параметры материала</div></div>
-  <div class="card">
-    <div class="section-title">Основные параметры</div>
-    <div class="field"><label>Название</label><input id="p-name" value="${esc(p.name || tpl.name)}"></div>
-    <div class="field-row">
-      <div class="field"><label>Цвет</label><input id="p-color" value="${esc(p.color || tpl.color)}"></div>
-      <div class="field"><label>Цена (${curSymbol()}/кг)</label><input id="p-price" type="number" inputmode="decimal" value="${kztToDisplay(p.price || tpl.price)}"></div>
-    </div>
-    <div class="field-row">
-      <div class="field"><label>Расход (г/м²)</label><input id="p-cons" type="number" inputmode="decimal" value="${p.consumption || tpl.consumption}"></div>
-      <div class="field"><label>Кол-во слоёв</label><input id="p-layers" type="number" inputmode="numeric" min="2" value="${p.layers || tpl.layers}"></div>
-    </div>
-    <div class="field"><label>Расход грунт. слоя (г/м²)</label>
-      <input id="p-primer" type="number" inputmode="decimal" value="${p.primer_consumption || tpl.primer_consumption}"></div>
-  </div>
-  ${is2c ? `<div class="card">
-    <div class="section-title">Двухкомпонентная система</div>
-    <div class="field-row">
-      <div class="field"><label>Основа (кг/компл)</label><input id="p-base" type="number" inputmode="decimal" value="${p.base || tpl.base}"></div>
-      <div class="field"><label>Отвердитель (кг/компл)</label><input id="p-hard" type="number" inputmode="decimal" value="${p.hardener || tpl.hardener}"></div>
-    </div></div>` : ''}
-  <div class="card">
-    <div class="section-title">Тара и разбавитель</div>
-    <div class="field-row">
-      <div class="field"><label>Тип тары</label><input id="p-ctype" value="${esc(p.container_type || tpl.container_type)}"></div>
-      ${is2c ? '' : `<div class="field"><label>Вес тары (кг)</label>
-        <input id="p-cwt" type="number" inputmode="decimal" value="${p.container_weight || tpl.container_weight}"></div>`}
-    </div>
-    <div class="field-row">
-      <div class="field"><label>Разбавитель</label><input id="p-thinner" value="${esc(p.thinner || tpl.thinner)}"></div>
-      <div class="field"><label>% разбавления</label><input id="p-tpct" type="number" inputmode="decimal" value="${p.thinnerPct || tpl.thinnerPct}"></div>
-    </div>
-  </div>
-  <div class="card">
-    <div class="section-title">Примечания</div>
-    <div class="field"><textarea id="p-comment" rows="2" placeholder="Комментарий к материалу">${esc(p.comment !== undefined ? p.comment : tpl.comment)}</textarea></div>
-    <div class="field"><label>Доп. заметки</label><textarea id="p-notes" rows="2" placeholder="Свободные поля">${esc(p.notes !== undefined ? p.notes : tpl.notes)}</textarea></div>
-  </div>
-  <label class="check-row"><input type="checkbox" id="p-save"> Сохранить как шаблон</label>
-  <div class="btn-row" style="margin-top:12px">
-    <button class="btn btn-secondary" id="btn-back3b">← Назад</button>
-    <button class="btn btn-primary" id="btn-calc">Рассчитать →</button>
-  </div>`;
-}
-
-function renderResult() {
-  const c = state.current;
-  const tpl = state.templates.find(t => t.id === c.templateId);
-  const mergedTpl = { ...tpl, ...c.params };
-  const res = calcProposal(c.area, mergedTpl);
-  if (!res) return `<div class="empty"><div class="empty-icon">⚠️</div>Ошибка расчёта</div>`;
-  const is2c = res.type === '2c';
+function renderKPScheme(){
   return `
-  <div class="nav"><button class="nav-back" id="btn-back4">← Изменить</button>
-    <div class="nav-title">Результат</div></div>
-  <div class="card" style="text-align:center;padding-top:20px;padding-bottom:20px">
-    <div style="font-size:12px;color:var(--text3);margin-bottom:4px">${esc(c.name || 'Объект')}</div>
-    <div style="font-size:13px;font-weight:600;margin-bottom:8px">${esc(mergedTpl.name)}</div>
-    <span class="tag tag-${res.type}">${is2c ? '2К — Двухкомпонентная' : '1К — Однокомпонентная'}</span>
-    <div class="price-big">${fmtPrice(res.costKzt)}</div>
-    <div class="price-label">стоимость материалов</div>
+  <div class="nav"><button class="nav-back" id="back-kp-start">← Назад</button><div class="nav-title">Выбор схемы</div></div>
+  <div class="alert alert-info">💡 Выберите схему — слои добавятся автоматически. Затем сможете изменить состав.</div>
+  ${state.schemes.map(s=>`
+  <div class="mat-card" id="scheme-${s.id}">
+    <div class="mat-badge" style="background:rgba(180,127,255,.15);color:var(--purple);font-size:18px">🎨</div>
+    <div class="mat-info">
+      <div class="mat-name">${esc(s.name)}</div>
+      <div class="mat-sub">${esc(s.desc)}</div>
+      <div style="margin-top:4px;display:flex;gap:4px;flex-wrap:wrap">
+        ${s.layers.map(l=>{const p=getProduct(l.productId);return p?`<span class="scheme-tag">${catLabel(p.category)} ${l.layers>1?'×'+l.layers:''}</span>`:''}).join('')}
+      </div>
+    </div>
+    <div class="menu-arrow">›</div>
+  </div>`).join('')}`;
+}
+
+function renderKPBuild(){
+  const kp=state.kp;
+  const hasMat=kp.layers.length>0;
+  // Быстрый расчёт для превью
+  let previewTotal='';
+  if(hasMat && parseFloat(kp.area)>0){
+    const r=calcKP();
+    previewTotal=`<div style="font-size:12px;color:var(--success);font-weight:600">≈ ${fmtRub(r.total)}</div>`;
+  }
+  return `
+  <div class="nav"><button class="nav-back" id="back-kp-start">← Назад</button>
+    <div class="nav-title">Состав покрытия</div>
+    ${previewTotal}
   </div>
-  <div class="result-grid">
-    <div class="metric"><div class="metric-val">${res.area}</div><div class="metric-label">Площадь, м²</div></div>
-    <div class="metric"><div class="metric-val">${res.layers}</div><div class="metric-label">Слоёв всего</div></div>
-    <div class="metric"><div class="metric-val">${res.totalKg}</div><div class="metric-label">Масса итого, кг</div></div>
-    <div class="metric"><div class="metric-val">${res.thinnerKg}</div><div class="metric-label">Разбавитель, кг</div></div>
-    ${is2c ? `
-    <div class="metric"><div class="metric-val">${res.kitsNeeded}</div><div class="metric-label">Комплектов</div></div>
-    <div class="metric"><div class="metric-val">${res.basePerKit}+${res.hardenerPerKit}</div><div class="metric-label">кг/комплект</div></div>
-    ` : `
-    <div class="metric"><div class="metric-val">${res.containers}</div><div class="metric-label">Тары, шт</div></div>
-    <div class="metric"><div class="metric-val">${res.containerWeight}</div><div class="metric-label">кг в таре</div></div>`}
+  <div class="card" style="margin-bottom:10px">
+    <div style="display:flex;justify-content:space-between;align-items:center">
+      <div><div style="font-weight:600">${esc(kp.name||'Без названия')}</div>
+      <div style="font-size:12px;color:var(--text3)">${kp.area||'—'} м²</div></div>
+      <button class="btn btn-secondary btn-sm" id="edit-kp-info">✏️ Изменить</button>
+    </div>
   </div>
-  <div class="section-title">Расшифровка расхода</div>
-  <div class="breakdown">
-    <div class="brow"><span class="brow-label">Площадь</span><span class="brow-val">${res.area} м²</span></div>
-    <div class="brow"><span class="brow-label">Грунтовочный слой</span><span class="brow-val">${res.primerTotal} кг</span></div>
-    <div class="brow"><span class="brow-label">Основные слои (${res.layers - 1} шт)</span><span class="brow-val">${res.mainTotal} кг</span></div>
-    ${is2c ? `
-    <div class="brow"><span class="brow-label">Потребность по основе</span><span class="brow-val">${res.totalBase} кг</span></div>
-    <div class="brow"><span class="brow-label">Комплектов (округл.)</span><span class="brow-val">${res.kitsNeeded} шт</span></div>
-    ` : `
-    <div class="brow"><span class="brow-label">Общий расход</span><span class="brow-val">${res.totalKg} кг</span></div>
-    <div class="brow"><span class="brow-label">Тары (округл.)</span><span class="brow-val">${res.containers} × ${res.containerWeight} кг</span></div>`}
-    <div class="brow"><span class="brow-label">Разбавитель (${mergedTpl.thinnerPct}%)</span>
-      <span class="brow-val">${res.thinnerKg} кг · ${esc(mergedTpl.thinner)}</span></div>
-    <div class="brow"><span class="brow-label">Цена материала</span>
-      <span class="brow-val">${pricePerKgDisplay(mergedTpl.price || 0)}</span></div>
-  </div>
-  ${mergedTpl.comment ? `<div class="alert alert-info">📌 ${esc(mergedTpl.comment)}</div>` : ''}
-  ${mergedTpl.notes ? `<div class="alert alert-warn">📝 ${esc(mergedTpl.notes)}</div>` : ''}
+  ${kp.layers.length===0?`<div class="empty"><div class="empty-icon">🏗</div>Добавьте материалы в систему покрытия</div>`:''}
+  ${kp.layers.map((l,i)=>{
+    const prod=l.productId?getProduct(l.productId):null;
+    const name=l.customName||prod?.name||'Позиция';
+    const cat=l.category||prod?.category||'custom';
+    const comp=l.customComp||prod?.comp||'1c';
+    const price=l.customPrice!=null?l.customPrice:(prod?.price||0);
+    const cons=l.customConsumption!=null?l.customConsumption:(prod?.consumption||0);
+    const a=parseFloat(kp.area)||0;
+    const totalKg=a*(cons/1000)*(l.layers||1);
+    const costEst=Math.round(totalKg*price/1000);
+    return `<div class="layer-item">
+      <div class="layer-header">
+        <span class="layer-badge ${catBadgeClass(cat)}">${catLabel(cat)}</span>
+        <span class="layer-name">${esc(name)}</span>
+        <div class="layer-actions">
+          ${i>0?`<button class="icon-btn up-btn" data-up="${i}" title="Вверх">↑</button>`:''}
+          <button class="icon-btn" data-del="${i}" title="Удалить">✕</button>
+        </div>
+      </div>
+      <div class="layer-stats">
+        <span class="layer-stat">${comp==='1c'?'1К':'2К'}</span>
+        <span class="layer-stat">${l.layers||1} сл.</span>
+        <span class="layer-stat">${cons} г/м²</span>
+        <span class="layer-stat">${price} ₽/кг</span>
+        ${totalKg>0?`<span class="layer-stat">теор. ${fmtN(totalKg,1)} кг</span>`:''}
+      </div>
+      ${a>0?`<div class="layer-price">≈ ${fmtRub(costEst)}</div>`:''}
+    </div>`;
+  }).join('')}
+  <button class="btn btn-ghost" id="add-layer" style="margin-bottom:12px">+ Добавить материал</button>
   <div class="btn-row">
-    <button class="btn btn-secondary" id="btn-save-kp">💾 Сохранить КП</button>
-    <button class="btn btn-success" id="btn-export">📄 Экспорт PDF</button>
-  </div>
-  <div style="margin-top:8px"><button class="btn btn-secondary" id="btn-new-after">+ Новое КП</button></div>`;
+    <button class="btn btn-primary" id="go-kp-result" ${!hasMat||!kp.area?'disabled':''}>Итог →</button>
+  </div>`;
 }
 
-function renderTemplates() {
-  const t = state.templates;
+function renderAddLayer(){
+  const cats=['primer','enamel','lacquer','thinner','custom'];
+  const selCat=state.addLayerCategory||'primer';
+  const products=state.catalog.filter(p=>p.category===selCat);
   return `
-  <div class="nav"><button class="nav-back" id="btn-back-home">← Назад</button>
-    <div class="nav-title">База шаблонов</div></div>
-  <button class="btn btn-primary" id="btn-add-tpl" style="margin-bottom:16px">+ Добавить шаблон</button>
-  ${t.length === 0 ? `<div class="empty"><div class="empty-icon">📦</div>Нет шаблонов</div>` : ''}
-  ${t.map(tpl => `
-  <div class="mat-card" style="align-items:flex-start">
-    <div class="mat-badge" style="margin-top:2px;background:${tpl.type === '1c' ? 'rgba(91,127,255,.2)' : 'rgba(61,214,140,.2)'};
-      color:${tpl.type === '1c' ? 'var(--accent2)' : 'var(--success)'}">
-      ${tpl.type === '1c' ? '1К' : '2К'}</div>
-    <div class="mat-info" style="cursor:pointer" data-edit-open="${tpl.id}">
-      <div class="mat-name">${esc(tpl.name)}</div>
-      <div class="mat-sub">${esc(tpl.color)} · ${tpl.consumption} г/м² · ${pricePerKgDisplay(tpl.price)}</div>
+  <div class="nav"><button class="nav-back" id="back-kp-build">← Назад</button><div class="nav-title">Добавить материал</div></div>
+  <div class="type-grid" style="grid-template-columns:repeat(4,1fr);gap:6px;margin-bottom:14px">
+    ${['primer','enamel','lacquer','thinner'].map(c=>`
+    <div class="type-card${selCat===c?' selected':''}" data-cat="${c}" style="padding:8px 4px">
+      <div class="type-card-icon" style="font-size:16px">${c==='primer'?'🟡':c==='enamel'?'🔵':c==='lacquer'?'🟣':'💧'}</div>
+      <div class="type-card-name" style="font-size:11px">${catLabel(c)}</div>
+    </div>`).join('')}
+  </div>
+  ${products.length===0?`<div class="empty"><div class="empty-icon">📦</div>Нет материалов в этой категории</div>`:''}
+  ${products.map(p=>`
+  <div class="mat-card" data-add-prod="${p.id}">
+    <div class="mat-badge" style="background:${p.comp==='2c'?'rgba(61,214,140,.15)':'rgba(91,127,255,.15)'};color:${p.comp==='2c'?'var(--success)':'var(--accent2)'}">
+      ${p.comp==='2c'?'2К':'1К'}</div>
+    <div class="mat-info">
+      <div class="mat-name">${esc(p.name)}</div>
+      <div class="mat-sub">${esc(p.color)}${p.consumption?' · '+p.consumption+' г/м²':''}</div>
     </div>
-    <div style="display:flex;flex-direction:column;gap:4px;flex-shrink:0">
-      <button class="btn btn-secondary" style="padding:5px 10px;font-size:11px;width:auto" data-edit="${tpl.id}">✏️</button>
-      <button class="btn btn-danger" style="padding:5px 10px;font-size:11px;width:auto" data-del="${tpl.id}">🗑</button>
+    <div class="mat-price-tag">${p.price} ₽/кг</div>
+  </div>`).join('')}
+  <div class="divider"></div>
+  <div class="section-title">Произвольная позиция</div>
+  <div class="card">
+    <div class="field"><label>Название</label><input id="custom-name" placeholder="Напр: Грунт специальный"></div>
+    <div class="field-row">
+      <div class="field"><label>Расход (г/м²)</label><input id="custom-cons" type="number" inputmode="decimal" placeholder="150"></div>
+      <div class="field"><label>Цена (₽/кг)</label><input id="custom-price" type="number" inputmode="decimal" placeholder="180"></div>
+    </div>
+    <div class="field-row">
+      <div class="field"><label>Кол-во слоёв</label><input id="custom-layers" type="number" inputmode="numeric" placeholder="1" value="1"></div>
+      <div class="field"><label>Тип</label>
+        <select id="custom-comp"><option value="1c">1К</option><option value="2c">2К</option></select>
+      </div>
+    </div>
+    <div class="field"><label>Категория</label>
+      <select id="custom-cat">
+        <option value="primer">Грунт</option>
+        <option value="enamel">Эмаль</option>
+        <option value="lacquer">Лак</option>
+        <option value="thinner">Разбавитель</option>
+        <option value="custom">Прочее</option>
+      </select>
+    </div>
+    <button class="btn btn-primary" id="add-custom">+ Добавить позицию</button>
+  </div>`;
+}
+
+
+function renderKPResult(){
+  const r=calcKP();
+  const kp=state.kp;
+  return `
+  <div class="nav"><button class="nav-back" id="back-kp-build">← Изменить</button><div class="nav-title">Итоговое КП</div></div>
+  <div style="font-size:13px;font-weight:600;margin-bottom:4px">${esc(kp.name||'Без названия')}</div>
+  <div style="font-size:12px;color:var(--text3);margin-bottom:12px">${r.area} м² · ${kp.layers.length} позиций</div>
+
+  <div class="price-hero">
+    <div style="font-size:12px;color:var(--text3);margin-bottom:4px">ИТОГО</div>
+    <div class="price-hero-val">${fmtRub(r.total)}</div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:12px">
+      <div style="background:var(--bg4);border-radius:8px;padding:8px;text-align:center">
+        <div style="font-size:15px;font-weight:700;color:var(--accent2)">${r.area>0?fmtRub(Math.round(r.pricePerM2)):'-'}</div>
+        <div style="font-size:11px;color:var(--text3);margin-top:2px">₽ / м²</div>
+      </div>
+      <div style="background:var(--bg4);border-radius:8px;padding:8px;text-align:center">
+        <div style="font-size:15px;font-weight:700;color:var(--accent2)">${r.totalKg>0?fmtRub(Math.round(r.pricePerKg)):'-'}</div>
+        <div style="font-size:11px;color:var(--text3);margin-top:2px">₽ / кг (всё)</div>
+      </div>
+    </div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:6px">
+      <div style="background:var(--bg4);border-radius:8px;padding:8px;text-align:center">
+        <div style="font-size:13px;font-weight:600;color:var(--text2)">${fmtN(r.matKg,1)} кг</div>
+        <div style="font-size:11px;color:var(--text3);margin-top:2px">материалы · ${r.matKg>0?fmtRub(Math.round(r.pricePerKgMat))+' ₽/кг':'-'}</div>
+      </div>
+      <div style="background:var(--bg4);border-radius:8px;padding:8px;text-align:center">
+        <div style="font-size:13px;font-weight:600;color:var(--text2)">${fmtN(r.thinnerKgTotal,2)} кг</div>
+        <div style="font-size:11px;color:var(--text3);margin-top:2px">разбавители · ${fmtRub(r.thinnerCostTotal)}</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="section-title">Состав системы покрытия</div>
+  <div class="result-table">
+    ${r.layers.map((l,i)=>{
+      const cat=l.kpLayer.category||l.prod?.category||'custom';
+      return `<div class="rt-row">
+        <div class="rt-badge" style="background:${catColor(cat)}"></div>
+        <div class="rt-name">
+          <div>${esc(l.name)}</div>
+          <div class="rt-sub">${l.layerCount} сл. · ${l.cons} г/м²</div>
+          <div class="rt-sub">
+            теор. ${fmtN(l.baseConsKg,2)} кг →
+            <strong>${l.comp==='2c'?`${l.kits} компл. (${fmtN(l.totalKg,1)} кг)`:`${l.containers} шт. (${fmtN(l.totalKg,1)} кг)`}</strong>
+          </div>
+          ${l.thinnerKg>0?`<div class="rt-sub">+ разб.: ${fmtN(l.thinnerKg,3)} кг ${esc(l.thinnerName)}</div>`:''}
+          <div class="rt-sub" style="color:var(--accent2)">${l.totalKg>0?fmtRub(Math.round((l.costMat+l.thinnerCost)/l.totalKg))+' ₽/кг':''}</div>
+        </div>
+        <div class="rt-val">${fmtRub(l.costMat+l.thinnerCost)}</div>
+      </div>`;
+    }).join('')}
+    <div class="rt-row" style="background:var(--bg4)">
+      <div class="rt-badge" style="background:transparent"></div>
+      <div class="rt-name" style="color:var(--text2)">Материалы
+        <div class="rt-sub">${fmtN(r.matKg,1)} кг · ${r.matKg>0?fmtRub(Math.round(r.pricePerKgMat))+' ₽/кг':''}</div>
+      </div>
+      <div class="rt-val">${fmtRub(r.matCost)}</div>
+    </div>
+    ${r.thinnerKgTotal>0?`<div class="rt-row" style="background:var(--bg4)">
+      <div class="rt-badge" style="background:rgba(61,214,140,.4)"></div>
+      <div class="rt-name" style="color:var(--text2)">Разбавители
+        <div class="rt-sub">${fmtN(r.thinnerKgTotal,2)} кг</div>
+      </div>
+      <div class="rt-val">${fmtRub(r.thinnerCostTotal)}</div>
+    </div>`:''}
+    <div class="rt-row rt-total">
+      <div class="rt-badge" style="background:var(--accent)"></div>
+      <div class="rt-name">ИТОГО
+        <div class="rt-sub" style="color:var(--accent2)">${r.totalKg} кг · ${r.area} м² · ${fmtRub(Math.round(r.pricePerM2))} ₽/м²</div>
+      </div>
+      <div class="rt-val">${fmtRub(r.total)}</div>
+    </div>
+
+
+  </div>
+  ${kp.note?`<div class="alert alert-warn">📝 ${esc(kp.note)}</div>`:''}
+  <div class="btn-row">
+    <button class="btn btn-secondary" id="save-kp">💾 Сохранить</button>
+    <button class="btn btn-success" id="export-kp">📄 PDF</button>
+  </div>
+  <div style="margin-top:8px"><button class="btn btn-secondary" id="new-kp">+ Новое КП</button></div>`;
+}
+
+function renderProposals(){
+  const p=state.proposals;
+  return `
+  <div class="nav"><button class="nav-back" id="back-home">← Назад</button><div class="nav-title">Мои КП</div></div>
+  ${p.length===0?`<div class="empty"><div class="empty-icon">📁</div>Нет сохранённых КП</div>`:''}
+  ${p.slice().reverse().map(pr=>`
+  <div class="mat-card" style="align-items:flex-start">
+    <div class="mat-badge" style="background:var(--accentDim);color:var(--accent2);margin-top:2px;font-size:10px">КП</div>
+    <div class="mat-info" style="cursor:pointer" data-pid="${pr.id}">
+      <div class="mat-name">${esc(pr.name)}</div>
+      <div class="mat-sub">${pr.area} м² · ${pr.layerCount} поз. · ${new Date(pr.date).toLocaleDateString('ru')}</div>
+    </div>
+    <div style="display:flex;flex-direction:column;align-items:flex-end;gap:5px;flex-shrink:0">
+      <div style="font-size:13px;font-weight:700;color:var(--success)">${fmtRub(pr.total)}</div>
+      <button class="btn btn-danger btn-sm" data-pdel="${pr.id}">🗑</button>
     </div>
   </div>`).join('')}`;
 }
 
-function renderEditTemplate() {
-  const t = state.editTemplate || { id: 'new', name: '', type: '1c', color: '', price: 0, consumption: 250, layers: 2,
-    primer_consumption: 150, container_type: 'Ведро', container_weight: 25, base: 18, hardener: 3,
-    thinner: '', thinnerPct: 5, comment: '', notes: '' };
-  const isNew = t.id === 'new';
-  const is2c = t.type === '2c';
+function renderViewProposal(){
+  const pr=state.viewProposal;
+  if(!pr)return`<div class="empty">Не найдено</div>`;
+  const r=pr.result;
   return `
-  <div class="nav"><button class="nav-back" id="btn-back-tpls">← Назад</button>
-    <div class="nav-title">${isNew ? 'Новый шаблон' : 'Редактировать'}</div></div>
-  <div class="card">
-    <div class="section-title">Основные</div>
-    <div class="field"><label>Название материала</label><input id="e-name" value="${esc(t.name)}"></div>
-    <div class="type-grid" style="margin-bottom:14px">
-      <div class="type-card${t.type === '1c' ? ' selected' : ''}" id="etype-1c">
-        <div class="type-card-icon">🟦</div><div class="type-card-name">1К</div><div class="type-card-sub">Однокомп.</div></div>
-      <div class="type-card${t.type === '2c' ? ' selected' : ''}" id="etype-2c">
-        <div class="type-card-icon">🟩</div><div class="type-card-name">2К</div><div class="type-card-sub">Двухкомп.</div></div>
-    </div>
-    <div class="field-row">
-      <div class="field"><label>Цвет</label><input id="e-color" value="${esc(t.color)}"></div>
-      <div class="field"><label>Цена (${curSymbol()}/кг)</label><input id="e-price" type="number" inputmode="decimal" value="${kztToDisplay(t.price)}"></div>
+  <div class="nav"><button class="nav-back" id="back-proposals">← Назад</button><div class="nav-title">${esc(pr.name)}</div></div>
+  <div class="price-hero">
+    <div style="font-size:12px;color:var(--text3);margin-bottom:4px">${new Date(pr.date).toLocaleDateString('ru')}</div>
+    <div class="price-hero-val">${fmtRub(pr.total)}</div>
+    <div class="price-hero-sub">${pr.area} м²${r.area>0?' · '+fmtRub(r.total/r.area)+' ₽/м²':''}</div>
+  </div>
+  <div class="result-table">
+    ${r.layers.map(l=>`<div class="rt-row">
+      <div class="rt-badge" style="background:${catColor(l.kpLayer?.category||l.prod?.category||'custom')}"></div>
+      <div class="rt-name"><div>${esc(l.name)}</div>
+        <div class="rt-sub">${l.layerCount} сл. · ${fmtN(l.totalKg,1)} кг</div></div>
+      <div class="rt-val">${fmtRub(l.costMat+l.thinnerCost)}</div>
+    </div>`).join('')}
+    <div class="rt-row rt-total">
+      <div class="rt-badge" style="background:var(--accent)"></div>
+      <div class="rt-name">ИТОГО</div>
+      <div class="rt-val">${fmtRub(pr.total)}</div>
     </div>
   </div>
+  <div class="btn-row">
+    <button class="btn btn-success" id="export-saved">📄 PDF</button>
+    <button class="btn btn-danger" id="del-this">🗑 Удалить</button>
+  </div>`;
+}
+
+function renderCatalog(){
+  const cats=['primer','enamel','lacquer','thinner'];
+  return `
+  <div class="nav"><button class="nav-back" id="back-home">← Назад</button><div class="nav-title">Каталог материалов</div></div>
+  <button class="btn btn-primary" id="add-product" style="margin-bottom:14px">+ Добавить материал</button>
+  ${cats.map(cat=>{
+    const prods=state.catalog.filter(p=>p.category===cat);
+    if(prods.length===0)return'';
+    return `<div class="section-title">${catLabel(cat)}</div>
+    ${prods.map(p=>`
+    <div class="mat-card" style="align-items:flex-start">
+      <div class="mat-badge" style="background:${p.comp==='2c'?'rgba(61,214,140,.15)':'rgba(91,127,255,.15)'};color:${p.comp==='2c'?'var(--success)':'var(--accent2)'}">
+        ${p.comp==='2c'?'2К':'1К'}</div>
+      <div class="mat-info" style="cursor:pointer" data-edit-prod="${p.id}">
+        <div class="mat-name">${esc(p.name)}</div>
+        <div class="mat-sub">${esc(p.color)}${p.consumption?' · '+p.consumption+' г/м²':''} · ${p.price} ₽/кг</div>
+        ${p.comment?`<div class="mat-sub">${esc(p.comment)}</div>`:''}
+      </div>
+      <div style="display:flex;flex-direction:column;gap:4px">
+        <button class="btn btn-secondary btn-sm" data-edit-prod="${p.id}">✏️</button>
+        <button class="btn btn-danger btn-sm" data-del-prod="${p.id}">🗑</button>
+      </div>
+    </div>`).join('')}`;
+  }).join('')}`;
+}
+
+function renderEditProduct(){
+  const t=state.editProduct||{id:'new',category:'primer',comp:'1c',name:'',color:'',price:0,consumption:150,container:25,base:18,hardener:3,thinner_id:'th1',thinnerPct:10,comment:''};
+  const isNew=t.id==='new';
+  const thinners=state.catalog.filter(p=>p.category==='thinner');
+  return `
+  <div class="nav"><button class="nav-back" id="back-catalog">← Назад</button>
+    <div class="nav-title">${isNew?'Новый материал':'Редактировать'}</div></div>
+  <div class="card">
+    <div class="section-title">Категория</div>
+    <div class="type-grid" style="grid-template-columns:repeat(4,1fr);gap:6px;margin-bottom:14px">
+      ${['primer','enamel','lacquer','thinner'].map(c=>`
+      <div class="type-card${t.category===c?' selected':''}" data-ecat="${c}" style="padding:8px 4px">
+        <div class="type-card-icon" style="font-size:16px">${c==='primer'?'🟡':c==='enamel'?'🔵':c==='lacquer'?'🟣':'💧'}</div>
+        <div class="type-card-name" style="font-size:11px">${catLabel(c)}</div>
+      </div>`).join('')}
+    </div>
+    <div class="type-grid">
+      <div class="type-card${t.comp==='1c'?' selected':''}" id="ecomp-1c"><div class="type-card-name">1К — Однокомп.</div></div>
+      <div class="type-card${t.comp==='2c'?' selected':''}" id="ecomp-2c"><div class="type-card-name">2К — Двухкомп.</div></div>
+    </div>
+    <div class="field"><label>Название</label><input id="ep-name" value="${esc(t.name)}"></div>
+    <div class="field-row">
+      <div class="field"><label>Цвет / обозначение</label><input id="ep-color" value="${esc(t.color)}"></div>
+      <div class="field"><label>Цена (₽/кг)</label><input id="ep-price" type="number" inputmode="decimal" value="${t.price}"></div>
+    </div>
+  </div>
+  ${t.category!=='thinner'?`
   <div class="card">
     <div class="section-title">Расход и нанесение</div>
+    <div class="field"><label>Расход за 1 слой (г/м²)</label><input id="ep-cons" type="number" inputmode="decimal" value="${t.consumption}"></div>
+    ${t.comp==='2c'?`
     <div class="field-row">
-      <div class="field"><label>Расход (г/м²)</label><input id="e-cons" type="number" inputmode="decimal" value="${t.consumption}"></div>
-      <div class="field"><label>Слоёв</label><input id="e-layers" type="number" inputmode="numeric" min="2" value="${t.layers}"></div>
-    </div>
-    <div class="field"><label>Расход грунт. слоя (г/м²)</label><input id="e-primer" type="number" inputmode="decimal" value="${t.primer_consumption}"></div>
-  </div>
-  ${is2c ? `<div class="card">
-    <div class="section-title">Комплектность</div>
-    <div class="field-row">
-      <div class="field"><label>Основа (кг)</label><input id="e-base" type="number" inputmode="decimal" value="${t.base || 18}"></div>
-      <div class="field"><label>Отвердитель (кг)</label><input id="e-hard" type="number" inputmode="decimal" value="${t.hardener || 3}"></div>
-    </div></div>` : '<div id="kit-ph"></div>'}
-  <div class="card">
-    <div class="section-title">Тара</div>
-    <div class="field-row">
-      <div class="field"><label>Тип тары</label><input id="e-ctype" value="${esc(t.container_type)}"></div>
-      <div class="field"><label>Вес тары (кг)</label><input id="e-cwt" type="number" inputmode="decimal" value="${t.container_weight}"></div>
-    </div>
+      <div class="field"><label>Основа (кг/компл)</label><input id="ep-base" type="number" inputmode="decimal" value="${t.base||18}"></div>
+      <div class="field"><label>Отвердитель (кг/компл)</label><input id="ep-hard" type="number" inputmode="decimal" value="${t.hardener||3}"></div>
+    </div>`:`
+    <div class="field"><label>Вес тары (кг)</label><input id="ep-cont" type="number" inputmode="decimal" value="${t.container||25}"></div>`}
   </div>
   <div class="card">
     <div class="section-title">Разбавитель</div>
     <div class="field-row">
-      <div class="field"><label>Разбавитель</label><input id="e-thinner" value="${esc(t.thinner)}"></div>
-      <div class="field"><label>% разбавления</label><input id="e-tpct" type="number" inputmode="decimal" value="${t.thinnerPct}"></div>
+      <div class="field"><label>Разбавитель</label>
+        <select id="ep-thinner">
+          <option value="">— не указан —</option>
+          ${thinners.map(th=>`<option value="${th.id}"${t.thinner_id===th.id?' selected':''}>${esc(th.name)}</option>`).join('')}
+        </select>
+      </div>
+      <div class="field"><label>% разбавления</label><input id="ep-tpct" type="number" inputmode="decimal" value="${t.thinnerPct||0}"></div>
     </div>
-  </div>
+  </div>`:''}
   <div class="card">
-    <div class="section-title">Заметки</div>
-    <div class="field"><label>Комментарий</label><textarea id="e-comment" rows="2">${esc(t.comment)}</textarea></div>
-    <div class="field"><label>Доп. поля</label><textarea id="e-notes" rows="2">${esc(t.notes)}</textarea></div>
+    <div class="field"><label>Комментарий</label><input id="ep-comment" value="${esc(t.comment||'')}"></div>
   </div>
   <div class="btn-row">
-    ${!isNew ? `<button class="btn btn-danger" id="btn-del-tpl">🗑 Удалить</button>` : ''}
-    <button class="btn btn-primary" id="btn-save-tpl">💾 Сохранить</button>
+    ${!isNew?`<button class="btn btn-danger" id="del-product">🗑 Удалить</button>`:''}
+    <button class="btn btn-primary" id="save-product">💾 Сохранить</button>
   </div>`;
 }
 
-function renderProposals() {
-  const p = state.proposals;
+function renderSchemes(){
   return `
-  <div class="nav"><button class="nav-back" id="btn-back-home">← Назад</button>
-    <div class="nav-title">Мои КП</div></div>
-  ${p.length === 0 ? `<div class="empty"><div class="empty-icon">📁</div>Нет сохранённых КП.<br>Создайте первое!</div>` : ''}
-  ${p.slice().reverse().map(pr => `
-  <div class="mat-card" style="align-items:flex-start">
-    <div class="mat-badge" style="background:var(--accentDim);color:var(--accent2);margin-top:2px">КП</div>
-    <div class="mat-info" style="cursor:pointer" data-pid="${pr.id}">
-      <div class="mat-name">${esc(pr.name)}</div>
-      <div class="mat-sub">${pr.area} м² · ${esc(pr.matName)}</div>
-      <div class="mat-sub" style="margin-top:3px">${new Date(pr.date).toLocaleDateString('ru')}</div>
+  <div class="nav"><button class="nav-back" id="back-home">← Назад</button><div class="nav-title">Схемы покрытия</div></div>
+  <div class="alert alert-info">💡 Схемы — быстрые шаблоны для формирования КП. Редактируйте под свои материалы.</div>
+  ${state.schemes.map(s=>`
+  <div class="card">
+    <div style="font-weight:600;margin-bottom:4px">${esc(s.name)}</div>
+    <div style="font-size:12px;color:var(--text3);margin-bottom:8px">${esc(s.desc)}</div>
+    <div style="display:flex;flex-direction:column;gap:4px">
+      ${s.layers.map(l=>{
+        const p=getProduct(l.productId);
+        return p?`<div style="display:flex;align-items:center;gap:8px;font-size:12px">
+          <span class="layer-badge ${catBadgeClass(p.category)}" style="font-size:10px">${catLabel(p.category)}</span>
+          <span>${esc(p.name)}</span>
+          ${l.layers>1?`<span style="color:var(--text3)">×${l.layers}</span>`:''}
+        </div>`:''}).join('')}
     </div>
-    <div style="display:flex;flex-direction:column;align-items:flex-end;gap:6px;flex-shrink:0">
-      <div class="mat-price">${fmtPrice(pr.costKzt || pr.total || 0)}</div>
-      <button class="btn btn-danger" style="padding:5px 10px;font-size:11px;width:auto" data-pdel="${pr.id}">🗑</button>
-    </div>
-  </div>`).join('')}`;
-}
-
-function renderViewProposal() {
-  const pr = state.viewProposal;
-  if (!pr) return `<div class="empty">Не найдено</div>`;
-  const is2c = pr.result.type === '2c';
-  const res = pr.result;
-  return `
-  <div class="nav"><button class="nav-back" id="btn-back-props">← Назад</button>
-    <div class="nav-title">${esc(pr.name)}</div></div>
-  <div class="card" style="text-align:center;padding:20px">
-    <div style="font-size:12px;color:var(--text3);margin-bottom:4px">${new Date(pr.date).toLocaleDateString('ru')}</div>
-    <div style="font-size:15px;font-weight:700;margin-bottom:8px">${esc(pr.matName)}</div>
-    <span class="tag tag-${pr.result.type}">${is2c ? '2К — Двухкомпонентная' : '1К — Однокомпонентная'}</span>
-    <div class="price-big">${fmtPrice(pr.costKzt || pr.total || 0)}</div>
-    <div class="price-label">стоимость материалов · ${pr.area} м²</div>
-  </div>
-  <div class="result-grid">
-    <div class="metric"><div class="metric-val">${res.area}</div><div class="metric-label">м²</div></div>
-    <div class="metric"><div class="metric-val">${res.layers}</div><div class="metric-label">слоёв</div></div>
-    <div class="metric"><div class="metric-val">${res.totalKg}</div><div class="metric-label">кг итого</div></div>
-    <div class="metric"><div class="metric-val">${res.thinnerKg}</div><div class="metric-label">кг разбавителя</div></div>
-    ${is2c ? `
-    <div class="metric"><div class="metric-val">${res.kitsNeeded}</div><div class="metric-label">комплектов</div></div>
-    <div class="metric"><div class="metric-val">${res.basePerKit}+${res.hardenerPerKit}</div><div class="metric-label">кг/компл</div></div>
-    ` : `
-    <div class="metric"><div class="metric-val">${res.containers}</div><div class="metric-label">тары, шт</div></div>
-    <div class="metric"><div class="metric-val">${res.containerWeight}</div><div class="metric-label">кг в таре</div></div>`}
-  </div>
-  <div class="breakdown">
-    <div class="brow"><span class="brow-label">Грунтовочный слой</span><span class="brow-val">${res.primerTotal} кг</span></div>
-    <div class="brow"><span class="brow-label">Основные слои</span><span class="brow-val">${res.mainTotal} кг</span></div>
-    ${is2c ? `<div class="brow"><span class="brow-label">Комплектов</span><span class="brow-val">${res.kitsNeeded} × (${res.basePerKit}+${res.hardenerPerKit}) кг</span></div>` :
-      `<div class="brow"><span class="brow-label">Тары</span><span class="brow-val">${res.containers} × ${res.containerWeight} кг</span></div>`}
-    <div class="brow"><span class="brow-label">Разбавитель</span><span class="brow-val">${res.thinnerKg} кг</span></div>
-  </div>
-  <div class="btn-row">
-    <button class="btn btn-success" id="btn-export-saved">📄 Экспорт PDF</button>
-    <button class="btn btn-danger" id="btn-del-this">🗑 Удалить</button>
-  </div>`;
+  </div>`).join('')}
+  <div class="alert alert-warn">⚙️ Редактирование схем — в следующей версии. Используйте ручную сборку для нестандартных систем.</div>`;
 }
 
 /* ===== EXPORT PDF ===== */
-function exportPDF(pr) {
-  const is2c = pr.result.type === '2c';
-  const res = pr.result;
-  const d = new Date(pr.date).toLocaleDateString('ru');
-  const html = `<!DOCTYPE html><html lang="ru"><head><meta charset="UTF-8">
-<title>КП — ${pr.name}</title>
+function exportPDF(kp, result){
+  const r=result||calcKP();
+  const d=new Date().toLocaleDateString('ru');
+  const html=`<!DOCTYPE html><html lang="ru"><head><meta charset="UTF-8"><title>КП — ${kp.name}</title>
 <style>
-  @page{margin:20mm}
-  *{box-sizing:border-box;margin:0;padding:0}
-  body{font-family:Arial,Helvetica,sans-serif;color:#1a1d27;font-size:13px;line-height:1.5}
-  .header{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:24px;padding-bottom:16px;border-bottom:2px solid #5b7fff}
-  h1{font-size:22px;font-weight:700;color:#5b7fff;margin-bottom:4px}
-  .sub{color:#666;font-size:12px}
-  .date-block{text-align:right;font-size:12px;color:#666}
-  .price-block{background:#f0f4ff;border-radius:10px;padding:16px 20px;margin:20px 0;display:flex;justify-content:space-between;align-items:center}
-  .price-val{font-size:28px;font-weight:700;color:#5b7fff}
-  .price-sub{font-size:12px;color:#666;margin-top:4px}
-  .tag{display:inline-block;padding:3px 10px;border-radius:20px;font-size:11px;font-weight:600;background:${is2c?'rgba(61,214,140,.15)':'rgba(91,127,255,.15)'};color:${is2c?'#0d8a4e':'#3355cc'};margin-top:6px}
-  h2{font-size:14px;font-weight:700;color:#1a1d27;margin:20px 0 10px;border-left:3px solid #5b7fff;padding-left:8px}
-  table{width:100%;border-collapse:collapse;margin-bottom:20px}
-  th{background:#f5f7ff;padding:8px 12px;text-align:left;font-size:12px;color:#666;font-weight:600;border-bottom:1px solid #dee3f5}
-  td{padding:8px 12px;border-bottom:1px solid #eee;font-size:13px}
-  tr:last-child td{border-bottom:none}
-  .total-row td{font-weight:700;color:#5b7fff;background:#f0f4ff}
-  .footer{margin-top:30px;padding-top:12px;border-top:1px solid #eee;font-size:11px;color:#aaa;display:flex;justify-content:space-between}
-  @media print{body{-webkit-print-color-adjust:exact;print-color-adjust:exact}}
+@page{margin:18mm}*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:Arial,sans-serif;color:#1a1d27;font-size:13px;line-height:1.5}
+.hdr{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:20px;padding-bottom:14px;border-bottom:2.5px solid #5b7fff}
+h1{font-size:20px;font-weight:700;color:#5b7fff}
+.sub{font-size:12px;color:#666;margin-top:2px}
+.price-block{background:#f0f4ff;border-radius:8px;padding:14px 18px;margin:16px 0;display:flex;justify-content:space-between;align-items:center}
+.price-val{font-size:26px;font-weight:700;color:#5b7fff}
+.price-sub{font-size:11px;color:#666;margin-top:3px}
+h2{font-size:13px;font-weight:700;margin:18px 0 8px;border-left:3px solid #5b7fff;padding-left:7px;color:#1a1d27}
+table{width:100%;border-collapse:collapse;margin-bottom:16px}
+th{background:#f5f7ff;padding:7px 10px;text-align:left;font-size:11px;color:#666;font-weight:600;border-bottom:1px solid #dee3f5}
+td{padding:7px 10px;border-bottom:1px solid #eee;font-size:12px;vertical-align:top}
+.badge{display:inline-block;padding:1px 7px;border-radius:8px;font-size:10px;font-weight:700}
+.b-primer{background:#fff3e0;color:#e65100}.b-enamel{background:#e8eeff;color:#3355cc}
+.b-lacquer{background:#f3e8ff;color:#6a0dad}.b-thinner{background:#e8f5e9;color:#1b5e20}.b-custom{background:#f5f5f5;color:#555}
+.subtotal td{font-weight:600;background:#fafbff}
+.total td{font-weight:700;color:#5b7fff;background:#eef1ff;font-size:13px}
+.footer{margin-top:24px;padding-top:10px;border-top:1px solid #eee;font-size:10px;color:#aaa;display:flex;justify-content:space-between}
+@media print{body{-webkit-print-color-adjust:exact;print-color-adjust:exact}}
 </style></head><body>
-<div class="header">
-  <div>
-    <h1>Коммерческое предложение</h1>
-    <div class="sub">Промышленная покраска полов и покрытий</div>
-    <div style="margin-top:8px;font-size:14px;font-weight:600">${esc(pr.name)}</div>
-  </div>
-  <div class="date-block">
-    <div>Дата: <strong>${d}</strong></div>
-    <div style="margin-top:4px">№ ${pr.id.slice(-6).toUpperCase()}</div>
-  </div>
+<div class="hdr">
+  <div><h1>Завод Нева</h1><div class="sub">Коммерческое предложение на промышленное покрытие</div>
+  <div style="margin-top:6px;font-size:14px;font-weight:600">${esc(kp.name||'Объект')}</div></div>
+  <div style="text-align:right;font-size:12px;color:#666"><div>Дата: <strong>${d}</strong></div>
+  <div style="margin-top:4px">${r.area} м²</div></div>
 </div>
 <div class="price-block">
-  <div>
-    <div style="font-size:13px;color:#666;margin-bottom:4px">Материал</div>
-    <div style="font-size:15px;font-weight:700">${esc(pr.matName)}</div>
-    <div><span class="tag">${is2c ? '2К — Двухкомпонентная' : '1К — Однокомпонентная'}</span></div>
+  <div><div style="font-size:12px;color:#666;margin-bottom:2px">Итоговая стоимость</div>
+  <div class="price-val">${fmtRub(r.total)}</div>
+  <div class="price-sub">${r.area>0?fmtRub(r.total/r.area)+' ₽/м²':''}</div></div>
+  <div style="text-align:right;font-size:12px;color:#666">
+    <div>Итого материалы</div>
   </div>
   <div style="text-align:right">
-    <div class="price-val">${fmtPrice(pr.costKzt || pr.total || 0)}</div>
-    <div class="price-sub">стоимость материалов</div>
+    <div style="font-size:13px;color:#555">₽/м²: <strong>${fmtRub(Math.round(r.pricePerM2))}</strong></div>
+    <div style="font-size:13px;color:#555;margin-top:3px">₽/кг (с разб.): <strong>${fmtRub(Math.round(r.pricePerKg))}</strong></div>
+    <div style="font-size:13px;color:#555;margin-top:3px">₽/кг (мат.): <strong>${fmtRub(Math.round(r.pricePerKgMat))}</strong></div>
+    <div style="font-size:12px;color:#888;margin-top:3px">мат. ${r.matKg} кг · разб. ${r.thinnerKgTotal} кг</div>
   </div>
 </div>
-<h2>Параметры объекта</h2>
+<h2>Состав системы покрытия</h2>
 <table>
-<tr><th>Параметр</th><th>Значение</th></tr>
-<tr><td>Площадь</td><td><strong>${res.area} м²</strong></td></tr>
-<tr><td>Тип системы</td><td>${is2c ? 'Двухкомпонентная (2К)' : 'Однокомпонентная (1К)'}</td></tr>
-<tr><td>Количество слоёв</td><td>${res.layers} (1 грунтовочный + ${res.layers - 1} основных)</td></tr>
+<tr><th>Категория</th><th>Материал</th><th>Слоёв</th><th>Расход</th><th>Кол-во / кг</th><th>₽/кг</th><th>Сумма</th></tr>
+${r.layers.map(l=>{
+  const cat=l.kpLayer?.category||l.prod?.category||'custom';
+  const bc='b-'+cat;
+  const qty=l.comp==='2c'&&l.kits?l.kits+' компл.':(l.containers?l.containers+' шт.':fmtN(l.totalKg,1)+' кг');
+  return `<tr><td><span class="badge ${bc}">${catLabel(cat)}</span></td>
+    <td>${esc(l.name)}${l.thinnerKg>0?`<br><span style="font-size:10px;color:#888">+ разб. ${fmtN(l.thinnerKg,2)} кг ${esc(l.thinnerName)}</span>`:''}</td>
+    <td>${l.layerCount}</td>
+    <td>${l.cons} г/м²</td>
+    <td>теор. ${fmtN(l.baseConsKg,2)} кг<br><strong>${l.comp==='2c'?`${l.kits} компл. = ${fmtN(l.totalKg,1)} кг`:`${l.containers} шт. = ${fmtN(l.totalKg,1)} кг`}</strong></td>
+    <td>${l.totalKg>0?fmtRub(Math.round((l.costMat+l.thinnerCost)/l.totalKg)):'-'}</td>
+    <td>${fmtRub(l.costMat+l.thinnerCost)}</td></tr>`;
+}).join('')}
+<tr class="subtotal"><td colspan="4">Материалы · ${r.matKg} кг</td><td>${r.matKg>0?fmtRub(Math.round(r.pricePerKgMat))+' ₽/кг':''}</td><td>${fmtRub(r.matCost)}</td></tr>
+${r.thinnerKgTotal>0?`<tr class="subtotal"><td colspan="4">Разбавители · ${r.thinnerKgTotal} кг</td><td>—</td><td>${fmtRub(r.thinnerCostTotal)}</td></tr>`:''}
+<tr class="subtotal"><td colspan="4">Итого · ${r.totalKg} кг</td><td>${fmtRub(Math.round(r.pricePerKg))} ₽/кг</td><td><td>${fmtRub(r.totalMat)}</td></tr>
+
+<tr class="total"><td colspan="4">ИТОГО</td><td>${fmtRub(Math.round(r.pricePerM2))} ₽/м²</td><td>${fmtRub(r.total)}</td></tr>
 </table>
-<h2>Расчёт материалов</h2>
-<table>
-<tr><th>Позиция</th><th>Количество</th></tr>
-<tr><td>Грунтовочный слой</td><td>${res.primerTotal} кг</td></tr>
-<tr><td>Основные слои (${res.layers - 1} шт)</td><td>${res.mainTotal} кг</td></tr>
-${is2c ? `
-<tr><td>Потребность по основе</td><td>${res.totalBase} кг</td></tr>
-<tr><td>Комплектов (округл. вверх)</td><td>${res.kitsNeeded} шт × (${res.basePerKit}+${res.hardenerPerKit}) кг</td></tr>
-` : `
-<tr><td>Суммарный расход</td><td>${res.totalKg} кг</td></tr>
-<tr><td>Тары (округл. вверх)</td><td>${res.containers} шт × ${res.containerWeight} кг</td></tr>
-`}
-<tr><td>Масса материала итого</td><td><strong>${res.totalKg} кг</strong></td></tr>
-<tr><td>Разбавитель</td><td>${res.thinnerKg} кг</td></tr>
-<tr class="total-row"><td>ИТОГО стоимость материалов</td><td>${fmtPrice(pr.costKzt || pr.total || 0)}</td></tr>
-</table>
-<div class="footer">
-  <div>Сформировано: Завод Нева</div>
-  <div>${d}</div>
-</div>
-<script>window.onload=()=>{window.print()}<\/script>
+${kp.note?`<div style="background:#fffde7;border:1px solid #ffe082;border-radius:6px;padding:10px 12px;font-size:12px;margin-top:8px"><strong>Примечание:</strong> ${esc(kp.note)}</div>`:''}
+<div class="footer"><div>Завод Нева</div><div>${d}</div></div>
+<script>window.onload=()=>window.print()<\/script>
 </body></html>`;
-  const blob = new Blob([html], { type: 'text/html;charset=utf-8' });
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement('a');
-  a.href = url; a.download = `КП_${pr.name.replace(/\s+/g, '_')}_${d.replace(/\./g, '-')}.html`;
-  document.body.appendChild(a); a.click(); document.body.removeChild(a);
+  const blob=new Blob([html],{type:'text/html;charset=utf-8'});
+  const url=URL.createObjectURL(blob);
+  const a=document.createElement('a');
+  a.href=url;a.download=`КП_${(kp.name||'Завод_Нева').replace(/\s+/g,'_')}_${d.replace(/\./g,'-')}.html`;
+  document.body.appendChild(a);a.click();document.body.removeChild(a);
   URL.revokeObjectURL(url);
-  show('📄 Файл сохранён! Откройте в браузере и нажмите Ctrl+P для печати в PDF');
+  show('📄 Файл сохранён! Откройте в браузере → Ctrl+P → PDF');
 }
 
-/* ===== COLLECT HELPERS ===== */
-function v(id) { const el = document.getElementById(id); return el ? el.value : null; }
-function n(id) { const el = document.getElementById(id); return el ? parseFloat(el.value) || 0 : null; }
-function collectParams() {
-  const rawPrice = n('p-price');
-  const priceKzt = displayToKzt(rawPrice);
-  return { name: v('p-name'), color: v('p-color'), price: priceKzt, consumption: n('p-cons'),
-    layers: n('p-layers'), primer_consumption: n('p-primer'), container_type: v('p-ctype'),
-    container_weight: n('p-cwt'), base: n('p-base'), hardener: n('p-hard'),
-    thinner: v('p-thinner'), thinnerPct: n('p-tpct'), comment: v('p-comment'), notes: v('p-notes') };
-}
-function collectTemplate() {
-  const typeEl = document.querySelector('#etype-2c.selected');
-  const type = typeEl ? '2c' : '1c';
-  const rawPrice = n('e-price');
-  const priceKzt = displayToKzt(rawPrice);
-  return { name: v('e-name'), type, color: v('e-color'), price: priceKzt, consumption: n('e-cons'),
-    layers: n('e-layers'), primer_consumption: n('e-primer'), container_type: v('e-ctype'),
-    container_weight: n('e-cwt'), base: n('e-base'), hardener: n('e-hard'),
-    thinner: v('e-thinner'), thinnerPct: n('e-tpct'), comment: v('e-comment'), notes: v('e-notes') };
+/* ===== COLLECT ===== */
+function collectProduct(){
+  const catEl=document.querySelector('[data-ecat].selected');
+  const cat=catEl?.dataset?.ecat||(state.editProduct?.category||'primer');
+  const comp=document.querySelector('#ecomp-2c.selected')?'2c':'1c';
+  const v=id=>{const el=document.getElementById(id);return el?el.value:''};
+  const n=id=>{const el=document.getElementById(id);return el?parseFloat(el.value)||0:0};
+  return{
+    category:cat,comp,
+    name:v('ep-name'),color:v('ep-color'),price:n('ep-price'),
+    consumption:n('ep-cons'),container:n('ep-cont'),
+    base:n('ep-base'),hardener:n('ep-hard'),
+    thinner_id:v('ep-thinner')||null,thinnerPct:n('ep-tpct'),
+    comment:v('ep-comment'),
+  };
 }
 
-/* ===== RENDER + BIND ===== */
-function render() {
-  const root = document.getElementById('root');
-  const s = state.screen;
-  if (s === 'home') root.innerHTML = renderHome();
-  else if (s === 'new1') root.innerHTML = renderStep1();
-  else if (s === 'new2') root.innerHTML = renderStep2();
-  else if (s === 'new3') root.innerHTML = renderStep3();
-  else if (s === 'result') root.innerHTML = renderResult();
-  else if (s === 'templates') root.innerHTML = renderTemplates();
-  else if (s === 'editTemplate') root.innerHTML = renderEditTemplate();
-  else if (s === 'proposals') root.innerHTML = renderProposals();
-  else if (s === 'viewProposal') root.innerHTML = renderViewProposal();
-  bindEvents();
-}
+/* ===== EVENTS ===== */
+function on(id,fn){const el=document.getElementById(id);if(el)el.addEventListener('click',fn)}
 
-function on(id, fn) { const el = document.getElementById(id); if (el) el.addEventListener('click', fn); }
-
-function bindEvents() {
+function bindEvents(){
   // HOME
-  on('btn-new', () => nav('new1'));
-  on('btn-proposals', () => nav('proposals'));
-  on('btn-templates', () => nav('templates'));
-  document.querySelectorAll('[data-pid]').forEach(el => {
-    el.addEventListener('click', () => {
-      const pr = state.proposals.find(p => p.id === el.dataset.pid);
-      if (pr) nav('viewProposal', { viewProposal: pr });
+  on('menu-new-kp',()=>{
+    state.kp={name:'',area:'',layers:[],note:''};
+    nav('kp_start');
+  });
+  on('menu-proposals',()=>nav('proposals'));
+  on('menu-catalog',()=>nav('catalog'));
+  on('menu-schemes',()=>nav('schemes'));
+  document.querySelectorAll('[data-pid]').forEach(el=>{
+    el.addEventListener('click',()=>{
+      const pr=state.proposals.find(p=>p.id===el.dataset.pid);
+      if(pr)nav('view_proposal',{viewProposal:pr});
     });
   });
 
-  // STEP 1
-  on('type-1c', () => { state.current.type = '1c'; state.current.templateId = ''; render(); });
-  on('type-2c', () => { state.current.type = '2c'; state.current.templateId = ''; render(); });
-  on('btn-next1', () => {
-    const area = document.getElementById('inp-area')?.value || '';
-    if (!area || parseFloat(area) <= 0) { show('⚠️ Введите площадь'); return; }
-    state.current.name = document.getElementById('inp-name')?.value.trim() || '';
-    state.current.area = area;
-    nav('new2');
+  // KP START
+  on('back-home',()=>nav('home'));
+  on('back-proposals',()=>nav('proposals'));
+  on('mode-scheme',()=>{
+    const n=document.getElementById('kp-name')?.value.trim()||'';
+    const a=document.getElementById('kp-area')?.value||'';
+    if(!a||parseFloat(a)<=0){show('⚠️ Введите площадь');return}
+    state.kp.name=n;state.kp.area=a;
+    nav('kp_scheme');
+  });
+  on('mode-manual',()=>{
+    const n=document.getElementById('kp-name')?.value.trim()||'';
+    const a=document.getElementById('kp-area')?.value||'';
+    if(!a||parseFloat(a)<=0){show('⚠️ Введите площадь');return}
+    state.kp.name=n;state.kp.area=a;
+    nav('kp_build');
   });
 
-  // STEP 2
-  on('btn-back2', () => nav('new1'));
-  on('btn-back2b', () => nav('new1'));
-  on('btn-next2', () => nav('new3'));
-  document.querySelectorAll('[data-tid]').forEach(el => {
-    el.addEventListener('click', () => {
-      state.current.templateId = el.dataset.tid;
-      state.current.params = {};
-      render();
+  // KP SCHEME
+  on('back-kp-start',()=>nav('kp_start'));
+  state.schemes.forEach(s=>{
+    on('scheme-'+s.id,()=>{
+      state.kp.layers=s.layers.map(l=>({productId:l.productId,layers:l.layers,customName:null,customPrice:null,customConsumption:null,customComp:null}));
+      nav('kp_build');
     });
   });
 
-  // STEP 3
-  on('btn-back3', () => nav('new2'));
-  on('btn-back3b', () => nav('new2'));
-  on('btn-calc', () => {
-    state.current.params = collectParams();
-    const saveChk = document.getElementById('p-save');
-    if (saveChk?.checked) {
-      const newTpl = { ...state.current.params, id: genId(), type: state.current.type };
-      state.templates.push(newTpl); persist(); show('✅ Шаблон сохранён!');
-    }
-    nav('result');
+  // KP BUILD
+  on('back-kp-start',()=>nav('kp_start'));
+  on('edit-kp-info',()=>nav('kp_start'));
+  on('add-layer',()=>{state.addLayerCategory='primer';nav('kp_add_layer')});
+  on('go-kp-result',()=>{
+    state.kp.note=document.getElementById('kp-note')?.value||'';
+    nav('kp_result');
   });
-
-  // RESULT
-  on('btn-back4', () => nav('new3'));
-  on('btn-new-after', () => { state.current = { name: '', area: '', type: '1c', templateId: '', params: {} }; nav('new1'); });
-  on('btn-save-kp', () => {
-    const c = state.current;
-    const tpl = state.templates.find(t => t.id === c.templateId);
-    const mergedTpl = { ...tpl, ...c.params };
-    const res = calcProposal(c.area, mergedTpl);
-    const pr = { id: genId(), name: c.name || 'Без названия', area: parseFloat(c.area),
-      matName: mergedTpl.name, costKzt: res.costKzt, date: Date.now(), result: res };
-    state.proposals.push(pr); persist();
-    show('✅ КП сохранено!');
-  });
-  on('btn-export', () => {
-    const c = state.current;
-    const tpl = state.templates.find(t => t.id === c.templateId);
-    const mergedTpl = { ...tpl, ...c.params };
-    const res = calcProposal(c.area, mergedTpl);
-    exportPDF({ name: c.name || 'Без названия', date: Date.now(), matName: mergedTpl.name, costKzt: res.costKzt, result: res, id: genId() });
-  });
-
-  // TEMPLATES
-  on('btn-back-home', () => nav('home'));
-  on('btn-add-tpl', () => { state.editTemplate = null; nav('editTemplate'); });
-  document.querySelectorAll('[data-edit]').forEach(el => {
-    el.addEventListener('click', e => {
+  document.querySelectorAll('[data-up]').forEach(el=>{
+    el.addEventListener('click',e=>{
       e.stopPropagation();
-      const tpl = state.templates.find(t => t.id === el.dataset.edit);
-      if (tpl) { state.editTemplate = JSON.parse(JSON.stringify(tpl)); nav('editTemplate'); }
+      const i=parseInt(el.dataset.up);
+      if(i>0){[state.kp.layers[i-1],state.kp.layers[i]]=[state.kp.layers[i],state.kp.layers[i-1]];render()}
     });
   });
-  document.querySelectorAll('[data-edit-open]').forEach(el => {
-    el.addEventListener('click', () => {
-      const tpl = state.templates.find(t => t.id === el.dataset.editOpen);
-      if (tpl) { state.editTemplate = JSON.parse(JSON.stringify(tpl)); nav('editTemplate'); }
-    });
-  });
-  document.querySelectorAll('[data-del]').forEach(el => {
-    el.addEventListener('click', e => {
+  document.querySelectorAll('[data-del]').forEach(el=>{
+    el.addEventListener('click',e=>{
       e.stopPropagation();
-      if (confirm('Удалить шаблон?')) {
-        state.templates = state.templates.filter(t => t.id !== el.dataset.del);
-        persist(); show('🗑 Шаблон удалён'); render();
-      }
+      state.kp.layers.splice(parseInt(el.dataset.del),1);render();
     });
   });
 
-  // EDIT TEMPLATE
-  on('btn-back-tpls', () => nav('templates'));
-  on('etype-1c', () => { if (!state.editTemplate) state.editTemplate = {}; state.editTemplate.type = '1c'; render(); });
-  on('etype-2c', () => { if (!state.editTemplate) state.editTemplate = {}; state.editTemplate.type = '2c'; render(); });
-  on('btn-save-tpl', () => {
-    const t = collectTemplate();
-    if (!t.name) { show('⚠️ Введите название'); return; }
-    if (state.editTemplate && state.editTemplate.id !== 'new') {
-      const idx = state.templates.findIndex(x => x.id === state.editTemplate.id);
-      if (idx >= 0) state.templates[idx] = { ...state.editTemplate, ...t };
-    } else {
-      state.templates.push({ ...t, id: genId() });
-    }
-    persist(); show('✅ Шаблон сохранён!'); nav('templates');
+  // ADD LAYER
+  on('back-kp-build',()=>nav('kp_build'));
+  on('back-kp-build2',()=>nav('kp_build'));
+  document.querySelectorAll('[data-cat]').forEach(el=>{
+    el.addEventListener('click',()=>{state.addLayerCategory=el.dataset.cat;render()});
   });
-  on('btn-del-tpl', () => {
-    if (confirm('Удалить шаблон?')) {
-      state.templates = state.templates.filter(t => t.id !== state.editTemplate.id);
-      persist(); show('🗑 Удалён'); nav('templates');
-    }
+  document.querySelectorAll('[data-add-prod]').forEach(el=>{
+    el.addEventListener('click',()=>{
+      state.kp.layers.push({productId:el.dataset.addProd,layers:1,customName:null,customPrice:null,customConsumption:null,customComp:null});
+      nav('kp_build');
+      show('✅ Добавлено');
+    });
   });
+  on('add-custom',()=>{
+    const name=document.getElementById('custom-name')?.value.trim();
+    const cons=parseFloat(document.getElementById('custom-cons')?.value)||0;
+    const price=parseFloat(document.getElementById('custom-price')?.value)||0;
+    const layers=parseInt(document.getElementById('custom-layers')?.value)||1;
+    const comp=document.getElementById('custom-comp')?.value||'1c';
+    const cat=document.getElementById('custom-cat')?.value||'custom';
+    if(!name){show('⚠️ Введите название');return}
+    state.kp.layers.push({productId:null,layers,customName:name,customPrice:price,customConsumption:cons,customComp:comp,category:cat});
+    nav('kp_build');
+    show('✅ Добавлено');
+  });
+
+  // KP SETTINGS
+
+  // KP RESULT
+  on('back-kp-build',()=>nav('kp_build'));
+  on('new-kp',()=>{state.kp={name:'',area:'',layers:[],note:''};nav('kp_start')});
+  on('save-kp',()=>{
+    const r=calcKP();
+    const pr={id:genId(),name:state.kp.name||'Без названия',area:parseFloat(state.kp.area),
+      layerCount:state.kp.layers.length,total:r.total,date:Date.now(),result:r,kp:JSON.parse(JSON.stringify(state.kp))};
+    state.proposals.push(pr);persist();show('✅ КП сохранено!');
+  });
+  on('export-kp',()=>exportPDF(state.kp));
 
   // PROPOSALS
-  on('btn-back-home', () => nav('home'));
-  document.querySelectorAll('[data-pdel]').forEach(el => {
-    el.addEventListener('click', e => {
+  document.querySelectorAll('[data-pid]').forEach(el=>{
+    el.addEventListener('click',()=>{
+      const pr=state.proposals.find(p=>p.id===el.dataset.pid);
+      if(pr)nav('view_proposal',{viewProposal:pr});
+    });
+  });
+  document.querySelectorAll('[data-pdel]').forEach(el=>{
+    el.addEventListener('click',e=>{
       e.stopPropagation();
-      if (confirm('Удалить КП?')) {
-        state.proposals = state.proposals.filter(p => p.id !== el.dataset.pdel);
-        persist(); show('🗑 КП удалено'); render();
-      }
+      if(confirm('Удалить КП?')){state.proposals=state.proposals.filter(p=>p.id!==el.dataset.pdel);persist();show('🗑 Удалено');render()}
     });
   });
 
   // VIEW PROPOSAL
-  on('btn-back-props', () => nav('proposals'));
-  on('btn-export-saved', () => { if (state.viewProposal) exportPDF(state.viewProposal); });
-  on('btn-del-this', () => {
-    if (confirm('Удалить это КП?')) {
-      state.proposals = state.proposals.filter(p => p.id !== state.viewProposal.id);
-      persist(); show('🗑 КП удалено'); nav('proposals');
+  on('back-proposals',()=>nav('proposals'));
+  on('export-saved',()=>{if(state.viewProposal)exportPDF(state.viewProposal.kp,state.viewProposal.result)});
+  on('del-this',()=>{
+    if(confirm('Удалить КП?')){
+      state.proposals=state.proposals.filter(p=>p.id!==state.viewProposal.id);
+      persist();show('🗑 Удалено');nav('proposals');
     }
   });
+
+  // CATALOG
+  on('back-home',()=>nav('home'));
+  on('add-product',()=>{state.editProduct=null;nav('edit_product')});
+  document.querySelectorAll('[data-edit-prod]').forEach(el=>{
+    el.addEventListener('click',e=>{
+      e.stopPropagation();
+      const p=state.catalog.find(x=>x.id===el.dataset.editProd);
+      if(p){state.editProduct=JSON.parse(JSON.stringify(p));nav('edit_product')}
+    });
+  });
+  document.querySelectorAll('[data-del-prod]').forEach(el=>{
+    el.addEventListener('click',e=>{
+      e.stopPropagation();
+      if(confirm('Удалить?')){state.catalog=state.catalog.filter(p=>p.id!==el.dataset.delProd);persist();show('🗑 Удалён');render()}
+    });
+  });
+
+  // EDIT PRODUCT
+  on('back-catalog',()=>nav('catalog'));
+  document.querySelectorAll('[data-ecat]').forEach(el=>{
+    el.addEventListener('click',()=>{
+      if(!state.editProduct)state.editProduct={};
+      state.editProduct.category=el.dataset.ecat;render();
+    });
+  });
+  on('ecomp-1c',()=>{if(!state.editProduct)state.editProduct={};state.editProduct.comp='1c';render()});
+  on('ecomp-2c',()=>{if(!state.editProduct)state.editProduct={};state.editProduct.comp='2c';render()});
+  on('save-product',()=>{
+    const t=collectProduct();
+    if(!t.name){show('⚠️ Введите название');return}
+    if(state.editProduct&&state.editProduct.id&&state.editProduct.id!=='new'){
+      const idx=state.catalog.findIndex(x=>x.id===state.editProduct.id);
+      if(idx>=0)state.catalog[idx]={...state.editProduct,...t};
+    } else {
+      state.catalog.push({...t,id:genId()});
+    }
+    persist();show('✅ Сохранено');nav('catalog');
+  });
+  on('del-product',()=>{
+    if(confirm('Удалить материал?')){
+      state.catalog=state.catalog.filter(p=>p.id!==state.editProduct.id);
+      persist();show('🗑 Удалён');nav('catalog');
+    }
+  });
+
+  // SCHEMES
+  on('back-home',()=>nav('home'));
 }
 
 render();
