@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-<title>ПолКоат КП</title>
+<title>Завод Нева — Расчёт покраски полов</title>
 <script src="https://telegram.org/js/telegram-web-app.js"></script>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Onest:wght@400;500;600;700&display=swap" rel="stylesheet">
@@ -115,12 +115,6 @@ textarea{resize:vertical;min-height:70px}
 ::-webkit-scrollbar{width:3px}
 ::-webkit-scrollbar-thumb{background:var(--border2);border-radius:2px}
 
-/* CURRENCY TOGGLE */
-.cur-toggle{display:flex;background:var(--bg3);border-radius:20px;padding:3px;gap:2px}
-.cur-btn{flex:1;padding:5px 10px;border-radius:16px;border:none;background:none;font-family:inherit;font-size:13px;font-weight:600;color:var(--text3);cursor:pointer;transition:.15s}
-.cur-btn.active{background:var(--accent);color:#fff}
-.cur-btn:active{transform:scale(.95)}
-
 .fab{position:fixed;bottom:24px;right:16px;width:52px;height:52px;border-radius:50%;background:var(--accent);color:#fff;font-size:24px;display:flex;align-items:center;justify-content:center;cursor:pointer;box-shadow:0 4px 20px rgba(91,127,255,.4);border:none;z-index:50;transition:.2s}
 .fab:active{transform:scale(.92)}
 </style>
@@ -156,19 +150,19 @@ if (tg) {
 const STORAGE_KEY = 'polcoat_v3';
 
 const DEFAULT_TEMPLATES = [
-  {id:'t1',name:'Эпоксидная грунтовка ЭП-001',type:'1c',color:'Прозрачный',price:850,
+  {id:'t1',name:'Эпоксидная грунтовка ЭП-001',type:'1c',color:'Прозрачный',price:160,
    consumption:200,layers:2,primer_consumption:150,container_type:'Ведро',container_weight:25,
    thinner:'Р-646',thinnerPct:10,comment:'Укрепляющий грунт для бетона',notes:''},
-  {id:'t2',name:'Полиуретановая эмаль ПУ-220',type:'2c',color:'RAL 7040 Серый',price:1200,
+  {id:'t2',name:'Полиуретановая эмаль ПУ-220',type:'2c',color:'RAL 7040 Серый',price:220,
    consumption:300,layers:3,primer_consumption:180,container_type:'Комплект',container_weight:21,
    base:18,hardener:3,thinner:'Уайт-спирит',thinnerPct:5,comment:'Финишное покрытие',notes:''},
-  {id:'t3',name:'Эпоксидная краска ЭП-140',type:'2c',color:'RAL 7035 Светло-серый',price:980,
+  {id:'t3',name:'Эпоксидная краска ЭП-140',type:'2c',color:'RAL 7035 Светло-серый',price:185,
    consumption:350,layers:2,primer_consumption:200,container_type:'Комплект',container_weight:20,
    base:16,hardener:4,thinner:'Ксилол',thinnerPct:8,comment:'Для производственных помещений',notes:''},
-  {id:'t4',name:'Акриловая эмаль АК-511',type:'1c',color:'RAL 7042 Серый дорожный',price:650,
+  {id:'t4',name:'Акриловая эмаль АК-511',type:'1c',color:'RAL 7042 Серый дорожный',price:120,
    consumption:250,layers:3,primer_consumption:160,container_type:'Ведро',container_weight:20,
    thinner:'Вода',thinnerPct:15,comment:'Водная база, низкий запах',notes:''},
-  {id:'t5',name:'Полиуретановый лак ПУ-ЛАК',type:'2c',color:'Бесцветный',price:1450,
+  {id:'t5',name:'Полиуретановый лак ПУ-ЛАК',type:'2c',color:'Бесцветный',price:280,
    consumption:180,layers:2,primer_consumption:120,container_type:'Комплект',container_weight:10,
    base:8,hardener:2,thinner:'Растворитель 646',thinnerPct:5,comment:'Финишный защитный лак',notes:''},
 ];
@@ -187,35 +181,22 @@ const state = (() => {
     screen: 'home',
     templates: saved?.templates || JSON.parse(JSON.stringify(DEFAULT_TEMPLATES)),
     proposals: saved?.proposals || [],
-    currency: saved?.currency || 'kzt',
-    rateRubToKzt: saved?.rateRubToKzt || 5.5,
     current: { name: '', area: '', type: '1c', templateId: '', params: {} },
     editTemplate: null,
     viewProposal: null,
   };
 })();
 
-function persist() { saveData({ templates: state.templates, proposals: state.proposals, currency: state.currency, rateRubToKzt: state.rateRubToKzt }); }
+function persist() { saveData({ templates: state.templates, proposals: state.proposals }); }
 function genId() { return Date.now().toString(36) + Math.random().toString(36).slice(2, 6); }
 
 
 /* ===== CURRENCY HELPERS ===== */
-function curSymbol() { return state.currency === 'kzt' ? '₸' : '₽'; }
-function curLabel() { return state.currency === 'kzt' ? 'тенге' : 'рублей'; }
-function kztToDisplay(kzt) {
-  if (state.currency === 'kzt') return Math.round(kzt);
-  return Math.round(kzt / state.rateRubToKzt);
-}
-function displayToKzt(val) {
-  if (state.currency === 'kzt') return val;
-  return val * state.rateRubToKzt;
-}
-function fmtPrice(kzt) {
-  return kztToDisplay(kzt).toLocaleString('ru') + ' ' + curSymbol();
-}
-function pricePerKgDisplay(priceKzt) {
-  return kztToDisplay(priceKzt).toLocaleString('ru') + ' ' + curSymbol() + '/кг';
-}
+function curSymbol() { return '₽'; }
+function kztToDisplay(v) { return Math.round(v); }
+function displayToKzt(v) { return v; }
+function fmtPrice(rub) { return Math.round(rub).toLocaleString('ru') + ' ₽'; }
+function pricePerKgDisplay(rub) { return Math.round(rub).toLocaleString('ru') + ' ₽/кг'; }
 
 /* ===== CALC ===== */
 function calcProposal(area, tpl) {
@@ -276,13 +257,6 @@ function stepper(active) {
 }
 
 
-function curToggleHtml() {
-  return `<div class="cur-toggle">
-    <button class="cur-btn${state.currency==='kzt'?' active':''}" id="cur-kzt">₸ Тенге</button>
-    <button class="cur-btn${state.currency==='rub'?' active':''}" id="cur-rub">₽ Рубли</button>
-  </div>`;
-}
-
 /* ===== RENDERS ===== */
 function renderHome() {
   const p = state.proposals;
@@ -290,10 +264,9 @@ function renderHome() {
   <div class="header">
     <div class="logo">🏭</div>
     <div style="flex:1">
-      <div class="header-title">ПолКоат КП</div>
-      <div class="header-sub">Расчёт коммерческих предложений</div>
+      <div class="header-title">Завод Нева</div>
+      <div class="header-sub">Расчёт КП · цены в рублях</div>
     </div>
-    ${curToggleHtml()}
   </div>
   <div class="type-grid" style="margin-bottom:16px">
     <div class="type-card" id="btn-new">
@@ -307,17 +280,11 @@ function renderHome() {
       <div class="type-card-sub">${p.length} сохранено</div>
     </div>
   </div>
-  <div style="display:flex;gap:8px;margin-bottom:12px">
-    <div class="card" id="btn-templates" style="cursor:pointer;display:flex;align-items:center;gap:10px;flex:1;margin-bottom:0">
-      <div style="font-size:22px">🗂</div>
-      <div><div style="font-weight:600;font-size:14px">Шаблоны</div>
-      <div style="font-size:12px;color:var(--text3)">${state.templates.length} материалов</div></div>
-      <div style="margin-left:auto;color:var(--text3);font-size:20px">›</div>
-    </div>
-    <div class="card" id="btn-settings" style="cursor:pointer;display:flex;align-items:center;gap:8px;margin-bottom:0;padding:12px 14px">
-      <div style="font-size:20px">⚙️</div>
-      <div style="font-size:12px;font-weight:600;white-space:nowrap">Курс<br><span style="color:var(--accent2)">1₽ = ${state.rateRubToKzt}₸</span></div>
-    </div>
+  <div class="card" id="btn-templates" style="cursor:pointer;display:flex;align-items:center;gap:10px;margin-bottom:12px">
+    <div style="font-size:22px">🗂</div>
+    <div><div style="font-weight:600;font-size:14px">База шаблонов</div>
+    <div style="font-size:12px;color:var(--text3)">${state.templates.length} материалов</div></div>
+    <div style="margin-left:auto;color:var(--text3);font-size:20px">›</div>
   </div>
   ${p.length > 0 ? `
   <div style="margin-top:20px">
@@ -484,41 +451,6 @@ function renderResult() {
     <button class="btn btn-success" id="btn-export">📄 Экспорт PDF</button>
   </div>
   <div style="margin-top:8px"><button class="btn btn-secondary" id="btn-new-after">+ Новое КП</button></div>`;
-}
-
-function renderSettings() {
-  return `
-  <div class="nav"><button class="nav-back" id="btn-back-home">← Назад</button>
-    <div class="nav-title">Настройки валюты</div></div>
-  <div class="card">
-    <div class="section-title">Активная валюта</div>
-    <div class="type-grid">
-      <div class="type-card${state.currency==='kzt'?' selected':''}" id="set-kzt">
-        <div class="type-card-icon">🇰🇿</div>
-        <div class="type-card-name">₸ Тенге</div>
-        <div class="type-card-sub">Казахстан</div>
-      </div>
-      <div class="type-card${state.currency==='rub'?' selected':''}" id="set-rub">
-        <div class="type-card-icon">🇷🇺</div>
-        <div class="type-card-name">₽ Рубли</div>
-        <div class="type-card-sub">Россия</div>
-      </div>
-    </div>
-  </div>
-  <div class="card">
-    <div class="section-title">Курс конвертации</div>
-    <div class="alert alert-info" style="margin-bottom:12px">💡 Цены в шаблонах хранятся в тенге. При выборе рублей суммы пересчитываются автоматически.</div>
-    <div class="field">
-      <label>1 рубль (₽) = ? тенге (₸)</label>
-      <input id="rate-input" type="number" inputmode="decimal" step="0.1" value="${state.rateRubToKzt}" placeholder="5.5">
-    </div>
-    <div style="font-size:12px;color:var(--text3);margin-top:-8px">
-      Пример: при курсе ${state.rateRubToKzt} → цена 1000 ₸ = ${Math.round(1000/state.rateRubToKzt)} ₽
-    </div>
-  </div>
-  <div class="btn-row">
-    <button class="btn btn-primary" id="btn-save-settings">💾 Сохранить</button>
-  </div>\`;
 }
 
 function renderTemplates() {
@@ -741,7 +673,7 @@ ${is2c ? `
 <tr class="total-row"><td>ИТОГО стоимость материалов</td><td>${fmtPrice(pr.costKzt || pr.total || 0)}</td></tr>
 </table>
 <div class="footer">
-  <div>Сформировано: ПолКоат КП</div>
+  <div>Сформировано: Завод Нева</div>
   <div>${d}</div>
 </div>
 <script>window.onload=()=>{window.print()}<\/script>
@@ -790,27 +722,12 @@ function render() {
   else if (s === 'editTemplate') root.innerHTML = renderEditTemplate();
   else if (s === 'proposals') root.innerHTML = renderProposals();
   else if (s === 'viewProposal') root.innerHTML = renderViewProposal();
-  else if (s === 'settings') root.innerHTML = renderSettings();
   bindEvents();
 }
 
 function on(id, fn) { const el = document.getElementById(id); if (el) el.addEventListener('click', fn); }
 
 function bindEvents() {
-  // CURRENCY TOGGLE
-  on('cur-kzt', () => { state.currency='kzt'; persist(); render(); });
-  on('cur-rub', () => { state.currency='rub'; persist(); render(); });
-
-  // SETTINGS
-  on('btn-settings', () => nav('settings'));
-  on('set-kzt', () => { state.currency='kzt'; render(); });
-  on('set-rub', () => { state.currency='rub'; render(); });
-  on('btn-save-settings', () => {
-    const r = parseFloat(document.getElementById('rate-input')?.value) || 5.5;
-    state.rateRubToKzt = r; persist();
-    show('✅ Курс сохранён: 1₽ = ' + r + '₸'); nav('home');
-  });
-
   // HOME
   on('btn-new', () => nav('new1'));
   on('btn-proposals', () => nav('proposals'));
