@@ -298,14 +298,7 @@ const state = {
   catalog: saved?.catalog || JSON.parse(JSON.stringify(DEFAULT_CATALOG)),
   schemes: saved?.schemes || JSON.parse(JSON.stringify(DEFAULT_SCHEMES)),
   proposals: saved?.proposals || [],
-  // Текущий КП
-  kp:{
-    name:'',area:'',
-    layers:[], // {productId, layers, customName, customPrice, customConsumption, customComp}
-  
-    margin:0, // %
-    note:'',
-  },
+  kp:{name:'',info:'',note:'',zones:[]},
   editProduct:null,
   editScheme:null,
   viewProposal:null,
@@ -331,6 +324,7 @@ function handleZoneMode(mode){
   const nm = document.getElementById('zone-name')?.value.trim() || '';
   const ar = document.getElementById('zone-area')?.value || '';
   if(!ar || parseFloat(ar) <= 0){ show('⚠️ Введите площадь'); return; }
+  if(!state.kp.zones) state.kp.zones = [];
   const z = newZone(nm || ('Зона ' + (state.kp.zones.length + 1)), ar);
   state.kp.zones.push(z);
   state.currentZoneIdx = state.kp.zones.length - 1;
@@ -473,6 +467,7 @@ function renderLogin(){
 
 function renderKPZones(){
   const kp=state.kp;
+  if(!kp.zones) kp.zones=[];
   const hasZones=kp.zones.length>0;
   const r=hasZones?calcKP():null;
   return `
