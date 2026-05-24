@@ -385,13 +385,10 @@ function calcLayer(kpLayer, area){
     baseConsUnit = a * (cons / 1000) * layerCount;
   }
 
-  // Разбавитель (всегда в кг)
-  const thinnerPct  = prod?.thinnerPct || 0;
-  const thinnerId   = prod?.thinner_id || null;
-  const thinnerProd = thinnerId ? getProduct(thinnerId) : null;
-  // Разбавитель считается от теоретического расхода (в кг — для kg-материала тот же baseConsUnit)
-  const thinnerAmt  = baseConsUnit * (thinnerPct / 100); // в тех же единицах что и материал
-  const thinnerCost = thinnerAmt * (thinnerProd?.price || 0); // ₽
+  // Разбавитель — отдельная позиция в КП, не считается автоматически
+  const thinnerAmt  = 0;
+  const thinnerCost = 0;
+  const thinnerProd = null;
 
   let containers, kits, actualAmt, costMat;
 
@@ -417,8 +414,8 @@ function calcLayer(kpLayer, area){
     price, cons, layerCount,
     baseConsUnit: +baseConsUnit.toFixed(3),   // теор. расход (кг или л)
     actualAmt:    +actualAmt.toFixed(3),      // факт. расход кратно таре (кг или л)
-    thinnerAmt:   +thinnerAmt.toFixed(3),     // разбавитель (кг или л)
-    thinnerName:  thinnerProd?.name || '',
+    thinnerAmt:   0,
+    thinnerName:  '',
     thinnerCost:  Math.round(thinnerCost),
     containers, kits,
     costMat: Math.round(costMat),
@@ -1035,7 +1032,7 @@ function renderEditProduct(){
   const is2c  = t.comp === '2c';
   const isL   = t.unit === 'l';
   const isTh  = t.category === 'thinner'; // только разбавители без расхода
-  const thinners = state.catalog.filter(p => p.category === 'thinner');
+
 
   const uLabel  = isL ? 'л'    : 'кг';
   const cLabel  = isL ? 'мл/м²': 'г/м²';
@@ -1102,19 +1099,7 @@ function renderEditProduct(){
       <input id="ep-hard" type="number" inputmode="decimal" value="${t.hardener||3}"></div>` : ''}
   </div>
 
-  <div class="card">
-    <div class="section-title">Разбавитель</div>
-    <div class="field-row">
-      <div class="field"><label>Разбавитель</label>
-        <select id="ep-thinner">
-          <option value="">— не указан —</option>
-          ${thinners.map(th=>`<option value="${th.id}"${t.thinner_id===th.id?' selected':''}>${esc(th.name)}</option>`).join('')}
-        </select>
-      </div>
-      <div class="field"><label>% разбавления</label>
-        <input id="ep-tpct" type="number" inputmode="decimal" value="${t.thinnerPct||0}"></div>
-    </div>
-  </div>` : ''}
+` : ''}
 
   <div class="btn-row">
     ${!isNew ? `<button class="btn btn-danger" id="del-product">🗑 Удалить</button>` : ''}
@@ -1435,9 +1420,8 @@ function collectProduct(){
     container:   isL ? contVal : (is2c ? null  : contVal),
     base:        is2c && !isL  ? contVal : null,
     hardener:    is2c && !isL  ? n('ep-hard') : null,
-    // Разбавитель
-    thinner_id:  v('ep-thinner') || null,
-    thinnerPct:  n('ep-tpct'),
+    thinner_id:  null,
+    thinnerPct:  0,
   };
 }
 
