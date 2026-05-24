@@ -503,19 +503,22 @@ function renderAddZone(){
       <input id="zone-area" type="number" inputmode="decimal" placeholder="500"></div>
   </div>
   <div class="section-title">Способ формирования системы</div>
-  <div class="type-grid">
-    <div class="type-card" id="zone-mode-scheme">
-      <div class="type-card-icon">🎨</div>
-      <div class="type-card-name">Готовая схема</div>
-      <div class="type-card-sub">Выбрать из списка</div>
-    </div>
-    <div class="type-card" id="zone-mode-manual">
-      <div class="type-card-icon">🔧</div>
-      <div class="type-card-name">Вручную</div>
-      <div class="type-card-sub">Слой за слоем</div>
-    </div>
+  <div class="btn-row" style="margin-top:0">
+    <button class="btn btn-secondary" id="zone-mode-scheme"
+      style="flex-direction:column;gap:6px;padding:20px 10px;height:auto">
+      <span style="font-size:26px">🎨</span>
+      <span style="font-size:13px;font-weight:600">Готовая схема</span>
+      <span style="font-size:11px;color:var(--text3);font-weight:400">Выбрать из списка</span>
+    </button>
+    <button class="btn btn-primary" id="zone-mode-manual"
+      style="flex-direction:column;gap:6px;padding:20px 10px;height:auto">
+      <span style="font-size:26px">🔧</span>
+      <span style="font-size:13px;font-weight:600">Вручную</span>
+      <span style="font-size:11px;font-weight:400;opacity:.8">Слой за слоем</span>
+    </button>
   </div>`;
 }
+
 
 function render(){
   const root=document.getElementById('root');
