@@ -309,6 +309,8 @@ const state = {
 
 function persist(){save({catalog:state.catalog,schemes:state.schemes,proposals:state.proposals})}
 function genId(){return Date.now().toString(36)+Math.random().toString(36).slice(2,5)}
+function currentZone(){return state.kp.zones[state.currentZoneIdx]||null}
+function newZone(name,area){return {id:genId(),name:name,area:area,layers:[]}}
 
 /* ===== HELPERS ===== */
 function esc(s){return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;')}
@@ -395,22 +397,26 @@ function calcLayer(kpLayer, area){
   };
 }
 
+function calcZone(zone){
+  const area=parseFloat(zone.area)||0;
+  const layers=(zone.layers||[]).map(l=>calcLayer(l,area));
+  const matCost=layers.reduce((s,l)=>s+l.costMat,0);
+  const thinnerCostTotal=layers.reduce((s,l)=>s+l.thinnerCost,0);
+  const total=Math.round(matCost+thinnerCostTotal);
+  const pricePerM2=area>0?total/area:0;
+  const matKg=layers.filter(l=>l.unit==='kg').reduce((s,l)=>s+l.actualAmt,0);
+  const matL=layers.filter(l=>l.unit==='l').reduce((s,l)=>s+l.actualAmt,0);
+  const thinnerAmt=layers.reduce((s,l)=>s+l.thinnerAmt,0);
+  return {zone,area,layers,matCost:Math.round(matCost),thinnerCostTotal:Math.round(thinnerCostTotal),
+    total,pricePerM2:+pricePerM2.toFixed(2),matKg:+matKg.toFixed(2),matL:+matL.toFixed(2),thinnerAmt:+thinnerAmt.toFixed(3)};
+}
 function calcKP(){
-  const kp = state.kp;
-  const area = parseFloat(kp.area)||0;
-  const layers = kp.layers.map(l=>calcLayer(l,area));
-  const matCost       = layers.reduce((s,l)=>s+l.costMat, 0);
-  const thinnerCostTotal = layers.reduce((s,l)=>s+l.thinnerCost, 0);
-  const total         = Math.round(matCost + thinnerCostTotal);
-  const pricePerM2    = area > 0 ? total / area : 0;
-  // Для суммарного веса/объёма — показываем только кг-материалы
-  // (литровые нельзя складывать с кг напрямую, показываем отдельно)
-  const matKg         = layers.filter(l=>l.unit==='kg').reduce((s,l)=>s+l.actualAmt,0);
-  const matL          = layers.filter(l=>l.unit==='l' ).reduce((s,l)=>s+l.actualAmt,0);
-  const thinnerAmt    = layers.reduce((s,l)=>s+l.thinnerAmt,0);
-  return {area, layers, matCost:Math.round(matCost), thinnerCostTotal:Math.round(thinnerCostTotal),
-    total, pricePerM2:+pricePerM2.toFixed(2),
-    matKg:+matKg.toFixed(2), matL:+matL.toFixed(2), thinnerAmt:+thinnerAmt.toFixed(3)};
+  const kp=state.kp;
+  const zones=(kp.zones||[]).map(z=>calcZone(z));
+  const total=zones.reduce((s,z)=>s+z.total,0);
+  const totalArea=zones.reduce((s,z)=>s+z.area,0);
+  const pricePerM2=totalArea>0?total/totalArea:0;
+  return {zones,total:Math.round(total),totalArea,pricePerM2:+pricePerM2.toFixed(2)};
 }
 
 /* ===== RENDERS ===== */
@@ -436,6 +442,73 @@ function renderLogin(){
     </div>
   </div>`;
 }
+
+function renderKPZones(){
+  const kp=state.kp;
+  const hasZones=kp.zones.length>0;
+  const r=hasZones?calcKP():null;
+  return `
+  <div class="nav"><button class="nav-back" id="back-kp-start">← Назад</button>
+    <div class="nav-title">${esc(kp.name||'КП')}</div>
+    ${r?`<div style="font-size:12px;color:var(--success);font-weight:600">${fmtRub(r.total)}</div>`:''}
+  </div>
+  ${!hasZones?`<div class="empty"><div class="empty-icon">🏗</div>Добавьте первую зону покрытия</div>`:''}
+  ${kp.zones.map((z,i)=>{
+    const zr=calcZone(z);
+    return `<div class="card" style="cursor:pointer;margin-bottom:8px;position:relative" data-edit-zone="${i}">
+      <div style="display:flex;align-items:center;gap:10px">
+        <div style="flex:1">
+          <div style="font-weight:600;font-size:14px">${esc(z.name||'Зона '+(i+1))}</div>
+          <div style="font-size:12px;color:var(--text3);margin-top:2px">${z.area} м² · ${z.layers.length} поз.</div>
+        </div>
+        <div style="text-align:right;flex-shrink:0">
+          <div style="font-weight:700;color:var(--success)">${fmtRub(zr.total)}</div>
+          <div style="font-size:11px;color:var(--text3)">${fmtRub(Math.round(zr.pricePerM2))} ₽/м²</div>
+        </div>
+        <button class="icon-btn" data-del-zone="${i}" style="flex-shrink:0">✕</button>
+      </div>
+      ${z.layers.length>0?`<div style="display:flex;gap:5px;flex-wrap:wrap;margin-top:8px">
+        ${z.layers.map(l=>{const p=l.productId?getProduct(l.productId):null;const cat=l.category||p?.category||'custom';
+          return `<span class="layer-badge ${catBadgeClass(cat)}" style="font-size:10px">${esc(l.customName||p?.name||'—')}</span>`;
+        }).join('')}
+      </div>`:''}
+    </div>`;
+  }).join('')}
+  <button class="btn btn-ghost" id="btn-add-zone" style="margin-bottom:12px">+ Добавить зону</button>
+  <div class="field" style="margin-bottom:12px">
+    <label>Примечание к КП</label>
+    <textarea id="kp-note" rows="2" placeholder="Условия, сроки...">${esc(kp.note||'')}</textarea>
+  </div>
+  <div class="btn-row">
+    <button class="btn btn-primary" id="go-kp-result" ${!hasZones?'disabled':''}>Итог →</button>
+  </div>`;
+}
+
+function renderAddZone(){
+  return `
+  <div class="nav"><button class="nav-back" id="back-kp-zones">← Назад</button>
+    <div class="nav-title">Новая зона</div></div>
+  <div class="card">
+    <div class="field"><label>Название зоны</label>
+      <input id="zone-name" placeholder="Напр: Пол, Стены, Колонны"></div>
+    <div class="field"><label>Площадь (м²)</label>
+      <input id="zone-area" type="number" inputmode="decimal" placeholder="500"></div>
+  </div>
+  <div class="section-title">Способ формирования системы</div>
+  <div class="type-grid">
+    <div class="type-card" id="zone-mode-scheme">
+      <div class="type-card-icon">🎨</div>
+      <div class="type-card-name">Готовая схема</div>
+      <div class="type-card-sub">Выбрать из списка</div>
+    </div>
+    <div class="type-card" id="zone-mode-manual">
+      <div class="type-card-icon">🔧</div>
+      <div class="type-card-name">Вручную</div>
+      <div class="type-card-sub">Слой за слоем</div>
+    </div>
+  </div>`;
+}
+
 function render(){
   const root=document.getElementById('root');
 
@@ -540,34 +613,35 @@ function renderKPScheme(){
 
 function renderKPBuild(){
   const kp=state.kp;
-  const hasMat=kp.layers.length>0;
-  // Быстрый расчёт для превью
+  const zone=currentZone();
+  if(!zone) return `<div class="empty">Зона не найдена</div>`;
+  const a2=parseFloat(zone.area)||0;
   let previewTotal='';
-  if(hasMat && parseFloat(kp.area)>0){
-    const r=calcKP();
-    previewTotal=`<div style="font-size:12px;color:var(--success);font-weight:600">≈ ${fmtRub(r.total)}</div>`;
+  if(zone.layers.length>0 && a2>0){
+    const zr=calcZone(zone);
+    previewTotal=`<div style="font-size:12px;color:var(--success);font-weight:600">≈ ${fmtRub(zr.total)}</div>`;
   }
   return `
-  <div class="nav"><button class="nav-back" id="back-kp-start">← Назад</button>
-    <div class="nav-title">Состав покрытия</div>
+  <div class="nav"><button class="nav-back" id="back-kp-zones">← Зоны</button>
+    <div class="nav-title">${esc(zone.name||'Зона')}</div>
     ${previewTotal}
   </div>
   <div class="card" style="margin-bottom:10px">
     <div style="display:flex;justify-content:space-between;align-items:center">
-      <div><div style="font-weight:600">${esc(kp.name||'Без названия')}</div>
-      <div style="font-size:12px;color:var(--text3)">${kp.area||'—'} м²</div></div>
-      <button class="btn btn-secondary btn-sm" id="edit-kp-info">✏️ Изменить</button>
+      <div><div style="font-weight:600">${esc(zone.name||'Без названия')}</div>
+      <div style="font-size:12px;color:var(--text3)">${zone.area} м²</div></div>
+      <button class="btn btn-secondary btn-sm" id="edit-zone-info">✏️ Изменить</button>
     </div>
   </div>
-  ${kp.layers.length===0?`<div class="empty"><div class="empty-icon">🏗</div>Добавьте материалы в систему покрытия</div>`:''}
-  ${kp.layers.map((l,i)=>{
+  ${zone.layers.length===0?`<div class="empty"><div class="empty-icon">🏗</div>Добавьте материалы</div>`:''}
+  ${zone.layers.map((l,i)=>{
     const prod=l.productId?getProduct(l.productId):null;
     const name=l.customName||prod?.name||'Позиция';
     const cat=l.category||prod?.category||'custom';
     const comp=l.customComp||prod?.comp||'1c';
     const price=l.customPrice!=null?l.customPrice:(prod?.price||0);
     const cons=l.customConsumption!=null?l.customConsumption:(prod?.consumption||0);
-    const a=parseFloat(kp.area)||0;
+    const a=parseFloat(zone?.area||0)||0;
     const baseAmt=a*(cons/1000)*(l.layers||1); // в кг или л
     const costEst=Math.round(baseAmt*price);
     const isExpanded = state.expandedLayer === i;
@@ -710,11 +784,11 @@ function renderKPResult(){
   <div style="font-size:12px;color:var(--text3);margin-bottom:12px">${r.area} м² · ${kp.layers.length} позиций</div>
 
   <div class="price-hero">
-    <div style="font-size:12px;color:var(--text3);margin-bottom:4px">ИТОГО · ${r.area} м²</div>
+    <div style="font-size:12px;color:var(--text3);margin-bottom:4px">ИТОГО · ${r.totalArea} м²</div>
     <div class="price-hero-val">${fmtRub(r.total)}</div>
     <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:12px">
       <div style="background:var(--bg4);border-radius:8px;padding:8px;text-align:center">
-        <div style="font-size:15px;font-weight:700;color:var(--accent2)">${r.area>0?fmtRub(Math.round(r.pricePerM2)):'-'}</div>
+        <div style="font-size:15px;font-weight:700;color:var(--accent2)">${r.totalArea>0?fmtRub(Math.round(r.pricePerM2)):'-'}</div>
         <div style="font-size:11px;color:var(--text3);margin-top:2px">₽ / м²</div>
       </div>
       <div style="background:var(--bg4);border-radius:8px;padding:8px;text-align:center">
@@ -774,7 +848,7 @@ function renderProposals(){
     <div class="mat-badge" style="background:var(--accentDim);color:var(--accent2);margin-top:2px;font-size:10px">КП</div>
     <div class="mat-info" style="cursor:pointer" data-pid="${pr.id}">
       <div class="mat-name">${esc(pr.name)}</div>
-      <div class="mat-sub">${pr.area} м² · ${pr.layerCount} поз. · ${new Date(pr.date).toLocaleDateString('ru')}</div>
+      <div class="mat-sub">${pr.totalArea||pr.area||'?'} м² · ${pr.zoneCount||1} зон · ${new Date(pr.date).toLocaleDateString('ru')}</div>
     </div>
     <div style="display:flex;flex-direction:column;align-items:flex-end;gap:5px;flex-shrink:0">
       <div style="font-size:13px;font-weight:700;color:var(--success)">${fmtRub(pr.total)}</div>
@@ -1144,32 +1218,31 @@ function bindEvents(){
   on('back-kp-start',()=>nav('kp_start'));
   state.schemes.forEach(s=>{
     on('scheme-'+s.id,()=>{
-      state.kp.layers=s.layers.map(l=>({productId:l.productId,layers:l.layers,customName:null,customPrice:null,customConsumption:null,customComp:null}));
+      const z=currentZone();if(!z)return;
+      z.layers=s.layers.map(l=>({productId:l.productId,layers:l.layers,customName:null,customPrice:null,customConsumption:null,customComp:null}));
       nav('kp_build');
     });
   });
 
   // KP BUILD
-  on('back-kp-start',()=>nav('kp_start'));
-  on('edit-kp-info',()=>nav('kp_start'));
+  on('back-kp-zones',()=>nav('kp_zones'));
+  on('edit-zone-info',()=>nav('kp_add_zone'));
   on('add-layer',()=>{state.addLayerCategory='primer';nav('kp_add_layer')});
-  on('go-kp-result',()=>{
-    state.kp.note=document.getElementById('kp-note')?.value||'';
-    state.expandedLayer=null;
-    nav('kp_result');
-  });
+  on('go-kp-result2',()=>{state.expandedLayer=null;nav('kp_zones');});
   document.querySelectorAll('[data-up]').forEach(el=>{
     el.addEventListener('click',e=>{
       e.stopPropagation();
       const i=parseInt(el.dataset.up);
-      if(i>0){[state.kp.layers[i-1],state.kp.layers[i]]=[state.kp.layers[i],state.kp.layers[i-1]];render()}
+      const zup=currentZone();if(!zup)return;
+      if(i>0){[zup.layers[i-1],zup.layers[i]]=[zup.layers[i],zup.layers[i-1]];render()}
     });
   });
   document.querySelectorAll('[data-del]').forEach(el=>{
     el.addEventListener('click',e=>{
       e.stopPropagation();
       const idx=parseInt(el.dataset.del);
-      state.kp.layers.splice(idx,1);
+      const zdel=currentZone();if(!zdel)return;
+      zdel.layers.splice(idx,1);
       if(state.expandedLayer===idx) state.expandedLayer=null;
       else if(state.expandedLayer>idx) state.expandedLayer--;
       render();
@@ -1193,7 +1266,8 @@ function bindEvents(){
       const i = parseInt(el.dataset.li);
       // Сохраняем текущие значения полей перед перерендером
       const g = cls => document.querySelector(`[data-li="${i}"].${cls}`);
-      const layer = state.kp.layers[i];
+      const zle2=currentZone();if(!zle2)return;
+      const layer = zle2.layers[i];
       layer.customUnit       = el.dataset.leUnit;
       layer.customName       = g('le-name')?.value.trim() || null;
       layer.customColor      = g('le-color')?.value.trim() || null;
@@ -1209,7 +1283,8 @@ function bindEvents(){
     el.addEventListener('click',e=>{
       e.stopPropagation();
       const i=parseInt(el.dataset.saveLayer);
-      const layer=state.kp.layers[i];
+      const zsl=currentZone();if(!zsl)return;
+      const layer=zsl.layers[i];
       const g=(cls)=>document.querySelector(`[data-li="${i}"].${cls}`);
       const gv=(cls)=>g(cls)?.value.trim();
       const gn=(cls)=>parseFloat(g(cls)?.value)||null;
@@ -1250,7 +1325,8 @@ function bindEvents(){
   });
   document.querySelectorAll('[data-add-prod]').forEach(el=>{
     el.addEventListener('click',()=>{
-      state.kp.layers.push({productId:el.dataset.addProd,layers:1,customName:null,customPrice:null,customConsumption:null,customComp:null});
+      const z=currentZone();if(!z)return;
+      z.layers.push({productId:el.dataset.addProd,layers:1,customName:null,customPrice:null,customConsumption:null,customComp:null});
       nav('kp_build');
       show('✅ Добавлено');
     });
@@ -1263,7 +1339,8 @@ function bindEvents(){
     const comp=document.getElementById('custom-comp')?.value||'1c';
     const cat=document.getElementById('custom-cat')?.value||'custom';
     if(!name){show('⚠️ Введите название');return}
-    state.kp.layers.push({productId:null,layers,customName:name,customPrice:price,customConsumption:cons,customComp:comp,category:cat});
+    const z2=currentZone();if(!z2)return;
+    z2.layers.push({productId:null,layers,customName:name,customPrice:price,customConsumption:cons,customComp:comp,category:cat});
     nav('kp_build');
     show('✅ Добавлено');
   });
@@ -1276,7 +1353,7 @@ function bindEvents(){
   on('save-kp',()=>{
     const r=calcKP();
     const pr={id:genId(),name:state.kp.name||'Без названия',area:parseFloat(state.kp.area),
-      layerCount:state.kp.layers.length,total:r.total,date:Date.now(),result:r,kp:JSON.parse(JSON.stringify(state.kp))};
+      zoneCount:r.zones.length,total:r.total,date:Date.now(),result:r,kp:JSON.parse(JSON.stringify(state.kp))};
     state.proposals.push(pr);persistAndSync();show('✅ КП сохранено!');
   });
   on('export-kp',()=>exportPDF(state.kp));
