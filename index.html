@@ -870,13 +870,48 @@ function renderViewProposal(){
   const pr=state.viewProposal;
   if(!pr)return`<div class="empty">Не найдено</div>`;
   const r=pr.result;
+  const zones=r.zones||[];
   return `
-  <div class="nav"><button class="nav-back" id="back-proposals">← Назад</button><div class="nav-title">${esc(pr.name)}</div></div>
+  <div class="nav"><button class="nav-back" id="back-proposals">← Назад</button>
+    <div class="nav-title">${esc(pr.name)}</div></div>
   <div class="price-hero">
     <div style="font-size:12px;color:var(--text3);margin-bottom:4px">${new Date(pr.date).toLocaleDateString('ru')}</div>
     <div class="price-hero-val">${fmtRub(pr.total)}</div>
-    <div class="price-hero-sub">${pr.area} м²${r.area>0?' · '+fmtRub(r.total/r.area)+' ₽/м²':''}</div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:10px">
+      <div style="background:var(--bg4);border-radius:8px;padding:8px;text-align:center">
+        <div style="font-size:14px;font-weight:700;color:var(--accent2)">${fmtRub(Math.round(r.pricePerM2||0))}</div>
+        <div style="font-size:11px;color:var(--text3)">₽/м² (средняя)</div>
+      </div>
+      <div style="background:var(--bg4);border-radius:8px;padding:8px;text-align:center">
+        <div style="font-size:14px;font-weight:700;color:var(--text2)">${r.totalArea||pr.area||'?'} м²</div>
+        <div style="font-size:11px;color:var(--text3)">${zones.length||1} зон</div>
+      </div>
+    </div>
   </div>
+  ${zones.length>0 ? zones.map((zr,zi)=>`
+  <div style="margin-bottom:14px">
+    <div style="display:flex;justify-content:space-between;align-items:baseline;margin-bottom:6px">
+      <div style="font-weight:700;font-size:13px">${esc(zr.zone?.name||('Зона '+(zi+1)))}</div>
+      <div style="font-size:12px;color:var(--text3)">${zr.area} м² · ${fmtRub(Math.round(zr.pricePerM2))} ₽/м²</div>
+    </div>
+    <div class="result-table">
+      ${(zr.layers||[]).map(l=>`<div class="rt-row">
+        <div class="rt-badge" style="background:${catColor(l.kpLayer?.category||l.prod?.category||'custom')}"></div>
+        <div class="rt-name">
+          <div>${esc(l.fullName||l.name)}</div>
+          <div class="rt-sub"><strong>${l.comp==='2c'
+            ?`${l.kits} компл. = ${fmtN(l.actualAmt,2)} ${l.unitLabel}`
+            :`${l.containers} шт. = ${fmtN(l.actualAmt,2)} ${l.unitLabel}`}</strong></div>
+        </div>
+        <div class="rt-val">${fmtRub(l.costMat+l.thinnerCost)}</div>
+      </div>`).join('')}
+      <div class="rt-row rt-total">
+        <div class="rt-badge" style="background:var(--accent)"></div>
+        <div class="rt-name">Итого зона</div>
+        <div class="rt-val">${fmtRub(zr.total)}</div>
+      </div>
+    </div>
+  </div>`).join('') : `<div class="alert alert-warn">⚠️ Детали зон недоступны (старый формат)</div>`}
   <div class="result-table">
     ${r.layers.map(l=>`<div class="rt-row">
       <div class="rt-badge" style="background:${catColor(l.kpLayer?.category||l.prod?.category||'custom')}"></div>
@@ -1361,6 +1396,74 @@ function bindEvents(){
   on('menu-proposals',()=>nav('proposals'));
   on('menu-catalog',()=>nav('catalog'));
   on('menu-schemes',()=>nav('schemes'));
+
+  // SCHEMES
+  on('btn-add-scheme',()=>{
+    state.editScheme={id:'new',name:'',desc:'',layers:[]};
+    nav('edit_scheme');
+  });
+  document.querySelectorAll('[data-edit-scheme]').forEach(el=>{
+    el.addEventListener('click',e=>{
+      e.stopPropagation();
+      const idx=parseInt(el.dataset.editScheme);
+      const s=state.schemes[idx];
+      if(s){state.editScheme=JSON.parse(JSON.stringify(s));nav('edit_scheme');}
+    });
+  });
+  document.querySelectorAll('[data-del-scheme]').forEach(el=>{
+    el.addEventListener('click',e=>{
+      e.stopPropagation();
+      if(confirm('Удалить схему?')){
+        state.schemes.splice(parseInt(el.dataset.delScheme),1);
+        persist();show('🗑 Схема удалена');render();
+      }
+    });
+  });
+  // EDIT SCHEME
+  on('back-schemes',()=>nav('schemes'));
+  on('save-scheme',()=>{
+    const s=state.editScheme;
+    if(!s){return;}
+    s.name=document.getElementById('es-name')?.value.trim()||s.name;
+    s.desc=document.getElementById('es-desc')?.value.trim()||'';
+    if(!s.name){show('⚠️ Введите название');return;}
+    document.querySelectorAll('[data-sl-layers]').forEach(inp=>{
+      const li=parseInt(inp.dataset.slLayers);
+      if(s.layers[li]) s.layers[li].layers=parseInt(inp.value)||1;
+    });
+    if(s.id==='new') s.id=genId();
+    const idx=state.schemes.findIndex(x=>x.id===s.id);
+    if(idx>=0) state.schemes[idx]=s; else state.schemes.push(s);
+    persist();show('✅ Схема сохранена');nav('schemes');
+  });
+  on('del-scheme',()=>{
+    if(confirm('Удалить схему?')){
+      state.schemes=state.schemes.filter(x=>x.id!==state.editScheme?.id);
+      persist();show('🗑 Удалена');nav('schemes');
+    }
+  });
+  document.querySelectorAll('[data-sl-add]').forEach(el=>{
+    el.addEventListener('click',()=>{
+      if(!state.editScheme) return;
+      state.editScheme.layers.push({productId:el.dataset.slAdd,layers:1});
+      render();
+    });
+  });
+  document.querySelectorAll('[data-sl-up]').forEach(el=>{
+    el.addEventListener('click',e=>{
+      e.stopPropagation();
+      const li=parseInt(el.dataset.slUp);
+      const layers=state.editScheme?.layers||[];
+      if(li>0){[layers[li-1],layers[li]]=[layers[li],layers[li-1]];render();}
+    });
+  });
+  document.querySelectorAll('[data-sl-del]').forEach(el=>{
+    el.addEventListener('click',e=>{
+      e.stopPropagation();
+      if(state.editScheme) state.editScheme.layers.splice(parseInt(el.dataset.slDel),1);
+      render();
+    });
+  });
   document.querySelectorAll('[data-pid]').forEach(el=>{
     el.addEventListener('click',()=>{
       const pr=state.proposals.find(p=>p.id===el.dataset.pid);
@@ -1601,9 +1704,7 @@ function bindEvents(){
     }
   });
 
-  // SCHEMES
-  on('back-home',()=>nav('home'));
-}
+  }
 
 // При старте: если есть сохранённый токен — сразу показываем приложение и тянем данные с сервера
 render();
