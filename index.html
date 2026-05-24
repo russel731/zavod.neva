@@ -74,6 +74,8 @@ select option{background:var(--bg3)}
 .badge-lacquer{background:rgba(180,127,255,.15);color:var(--purple)}
 .badge-thinner{background:rgba(61,214,140,.15);color:var(--success)}
 .badge-custom{background:rgba(255,255,255,.08);color:var(--text2)}
+.badge-pe{background:rgba(255,140,105,.15);color:#ff8c69}
+.badge-we{background:rgba(64,192,208,.15);color:#40c0d0}
 .layer-name{font-size:13px;font-weight:600;flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .layer-actions{display:flex;gap:4px;flex-shrink:0}
 .icon-btn{width:28px;height:28px;border-radius:6px;border:none;background:var(--bg4);color:var(--text2);cursor:pointer;display:flex;align-items:center;justify-content:center;font-size:13px;transition:.15s}
@@ -153,9 +155,74 @@ select option{background:var(--bg3)}
 <div id="scroll-root"><div class="app"><div id="root"></div></div></div>
 <div class="snack" id="snack"></div>
 <script>
+/* ===== CONFIG ===== */
+const API_URL = (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1')
+  ? 'http://localhost:8000'
+  : 'https://YOUR_VPS_DOMAIN_OR_IP:8000'; // ← замените на адрес вашего сервера
+
 /* ===== TELEGRAM ===== */
 const tg = window.Telegram?.WebApp;
 if(tg){tg.ready();tg.expand();}
+
+/* ===== AUTH STATE ===== */
+const auth = {
+  token: localStorage.getItem('zn_token') || null,
+  userId: localStorage.getItem('zn_user_id') || null,
+  name: localStorage.getItem('zn_name') || null,
+  source: localStorage.getItem('zn_source') || null,
+};
+function saveAuth(data){
+  auth.token = data.token; auth.userId = data.user_id;
+  auth.name = data.name; auth.source = data.source;
+  localStorage.setItem('zn_token', data.token);
+  localStorage.setItem('zn_user_id', data.user_id);
+  localStorage.setItem('zn_name', data.name || '');
+  localStorage.setItem('zn_source', data.source || '');
+}
+function clearAuth(){
+  auth.token=null; auth.userId=null; auth.name=null; auth.source=null;
+  ['zn_token','zn_user_id','zn_name','zn_source'].forEach(k=>localStorage.removeItem(k));
+}
+
+/* ===== API HELPERS ===== */
+async function api(method, path, body){
+  const opts = {
+    method,
+    headers: {'Content-Type':'application/json', ...(auth.token?{'Authorization':'Bearer '+auth.token}:{})},
+  };
+  if(body) opts.body = JSON.stringify(body);
+  const r = await fetch(API_URL + path, opts);
+  if(r.status === 401){ clearAuth(); render(); throw new Error('auth'); }
+  if(!r.ok){ const e=await r.json().catch(()=>({detail:'Ошибка сервера'})); throw new Error(e.detail||'Ошибка'); }
+  return r.json();
+}
+
+/* ===== SYNC ===== */
+let syncPending = false;
+async function syncPull(){
+  try{
+    const data = await api('GET','/sync/pull');
+    if(data.catalog?.length)  state.catalog  = data.catalog;
+    if(data.schemes?.length)  state.schemes  = data.schemes;
+    if(data.proposals?.length) state.proposals = data.proposals;
+    persist(); // сохраняем локально как кэш
+  } catch(e){ if(e.message!=='auth') console.warn('sync pull failed',e); }
+}
+async function syncPush(){
+  try{
+    await api('POST','/sync/push',{
+      catalog: state.catalog,
+      schemes: state.schemes,
+      proposals: state.proposals
+    });
+  } catch(e){ console.warn('sync push failed',e); }
+}
+// Автосинк при изменениях
+const _origPersist = null;
+function persistAndSync(){
+  persist();
+  if(auth.token) syncPush().catch(()=>{});
+}
 
 /* ===== STORAGE ===== */
 const SK = 'zavod_neva_v1';
@@ -181,11 +248,20 @@ const DEFAULT_CATALOG = [
   // ЛАКИ
   {id:'l1',category:'lacquer',comp:'2c',name:'Лак ПУ-0140 2К',color:'Бесцветный',price:275,consumption:120,container:null,base:8,hardener:2,thinner_id:'th3',thinnerPct:5,comment:'Полиуретановый защитный лак'},
   {id:'l2',category:'lacquer',comp:'1c',name:'Лак ЭП-730',color:'Бесцветный',price:210,consumption:100,container:10,thinner_id:'th1',thinnerPct:10,comment:'Эпоксидный финишный лак'},
+  // ГРУНТ-ЭМАЛЬ
+  {id:'ge1',category:'primer_enamel',comp:'1c',name:'Грунт-эмаль ПФ-01',color:'Серый (RAL 7040)',price:130,consumption:200,container:20,unit:'kg',thinner_id:'th2',thinnerPct:10,comment:'Алкидная грунт-эмаль 3 в 1'},
+  {id:'ge2',category:'primer_enamel',comp:'2c',name:'Грунт-эмаль ЭП-0280 2К',color:'Серый',price:210,consumption:220,container:null,base:16,hardener:4,unit:'kg',thinner_id:'th1',thinnerPct:8,comment:'Эпоксидная грунт-эмаль для металла и бетона'},
+  {id:'ge3',category:'primer_enamel',comp:'1c',name:'Грунт-эмаль Hammerite',color:'Серебристый',price:320,consumption:150,container:2.5,unit:'l',thinner_id:'th5',thinnerPct:5,comment:'Молотковая грунт-эмаль по металлу, в литрах'},
+  // ВОДОЭМУЛЬСИОННЫЕ КРАСКИ
+  {id:'we1',category:'water_emulsion',comp:'1c',name:'ВД-АК-111 Фасадная',color:'Белый',price:78,consumption:200,container:15,unit:'l',thinner_id:'th4',thinnerPct:10,comment:'Водоэмульсионная фасадная краска'},
+  {id:'we2',category:'water_emulsion',comp:'1c',name:'ВД-АК-216 Интерьерная',color:'Белый',price:65,consumption:180,container:10,unit:'l',thinner_id:'th4',thinnerPct:5,comment:'Водно-дисперсионная для стен и потолков'},
+  {id:'we3',category:'water_emulsion',comp:'1c',name:'ВД-КЧ-0278 Для полов',color:'Серый',price:95,consumption:250,container:10,unit:'l',thinner_id:'th4',thinnerPct:10,comment:'Водоэмульсионная для бетонных полов'},
   // РАЗБАВИТЕЛИ
-  {id:'th1',category:'thinner',comp:'1c',name:'Растворитель Р-646',color:'—',price:85,consumption:0,container:10,thinner_id:null,thinnerPct:0,comment:'Для эпоксидных материалов'},
-  {id:'th2',category:'thinner',comp:'1c',name:'Уайт-спирит',color:'—',price:55,consumption:0,container:10,thinner_id:null,thinnerPct:0,comment:'Для алкидных материалов'},
-  {id:'th3',category:'thinner',comp:'1c',name:'Растворитель 650',color:'—',price:90,consumption:0,container:10,thinner_id:null,thinnerPct:0,comment:'Для полиуретановых материалов'},
-  {id:'th4',category:'thinner',comp:'1c',name:'Вода дистиллированная',color:'—',price:25,consumption:0,container:5,thinner_id:null,thinnerPct:0,comment:'Для водных материалов'},
+  {id:'th1',category:'thinner',comp:'1c',name:'Растворитель Р-646',color:'—',price:85,consumption:0,container:10,unit:'kg',thinner_id:null,thinnerPct:0,comment:'Для эпоксидных материалов'},
+  {id:'th2',category:'thinner',comp:'1c',name:'Уайт-спирит',color:'—',price:55,consumption:0,container:10,unit:'kg',thinner_id:null,thinnerPct:0,comment:'Для алкидных материалов'},
+  {id:'th3',category:'thinner',comp:'1c',name:'Растворитель 650',color:'—',price:90,consumption:0,container:10,unit:'kg',thinner_id:null,thinnerPct:0,comment:'Для полиуретановых материалов'},
+  {id:'th4',category:'thinner',comp:'1c',name:'Вода / разбавление',color:'—',price:0,consumption:0,container:10,unit:'l',thinner_id:null,thinnerPct:0,comment:'Для водоэмульсионных материалов'},
+  {id:'th5',category:'thinner',comp:'1c',name:'Уайт-спирит (л)',color:'—',price:65,consumption:0,container:5,unit:'l',thinner_id:null,thinnerPct:0,comment:'Для материалов в литрах'},
 ];
 
 // Готовые схемы покрытия
@@ -242,91 +318,127 @@ function show(msg){const el=document.getElementById('snack');el.textContent=msg;
 function nav(screen,extra={}){state.screen=screen;Object.assign(state,extra);render();document.getElementById('scroll-root').scrollTop=0}
 
 function getProduct(id){return state.catalog.find(p=>p.id===id)}
-function catLabel(c){return c==='primer'?'Грунт':c==='enamel'?'Эмаль':c==='lacquer'?'Лак':c==='thinner'?'Разбавитель':'Прочее'}
-function catBadgeClass(c){return c==='primer'?'badge-primer':c==='enamel'?'badge-enamel':c==='lacquer'?'badge-lacquer':c==='thinner'?'badge-thinner':'badge-custom'}
-function catColor(c){return c==='primer'?'#f5a623':c==='enamel'?'#7c9fff':c==='lacquer'?'#b47fff':c==='success'?'#3dd68c':'#9ba3bf'}
+function catLabel(c){return c==='primer'?'Грунт':c==='enamel'?'Эмаль':c==='lacquer'?'Лак':c==='thinner'?'Разбавитель':c==='primer_enamel'?'Грунт-эмаль':c==='water_emulsion'?'ВД краска':'Прочее'}
+function catBadgeClass(c){return c==='primer'?'badge-primer':c==='enamel'?'badge-enamel':c==='lacquer'?'badge-lacquer':c==='thinner'?'badge-thinner':c==='primer_enamel'?'badge-pe':c==='water_emulsion'?'badge-we':'badge-custom'}
+function catColor(c){return c==='primer'?'#f5a623':c==='enamel'?'#7c9fff':c==='lacquer'?'#b47fff':c==='thinner'?'#3dd68c':c==='primer_enamel'?'#ff8c69':c==='water_emulsion'?'#40c0d0':'#9ba3bf'}
 
 /* ===== РАСЧЁТ ОДНОГО СЛОЯ ===== */
 function calcLayer(kpLayer, area){
   const a = parseFloat(area)||0;
   const prod = kpLayer.productId ? getProduct(kpLayer.productId) : null;
-  const price = kpLayer.customPrice != null ? kpLayer.customPrice : (prod?.price||0);
-  const cons = kpLayer.customConsumption != null ? kpLayer.customConsumption : (prod?.consumption||0);
-  const comp = kpLayer.customComp || prod?.comp || '1c';
-  const layerCount = kpLayer.layers||1;
-  const name = kpLayer.customName || prod?.name || 'Позиция';
-  const category = kpLayer.category || prod?.category || 'custom';
 
-  // Разбавитель
-  const thinnerPct = prod?.thinnerPct||0;
-  const thinnerId = prod?.thinner_id||null;
-  const thinnerProd = thinnerId ? getProduct(thinnerId) : null;
+  const price  = kpLayer.customPrice        != null ? kpLayer.customPrice        : (prod?.price||0);
+  const cons   = kpLayer.customConsumption  != null ? kpLayer.customConsumption  : (prod?.consumption||0);
+  const comp   = kpLayer.customComp  || prod?.comp  || '1c';
+  const unit   = kpLayer.customUnit  || prod?.unit  || 'kg'; // 'kg' | 'l'
+  const layerCount = kpLayer.layers || 1;
+  const name     = kpLayer.customName || prod?.name || 'Позиция';
+  const category = kpLayer.category  || prod?.category || 'custom';
 
-  // Расход основы/материала (кг) на всю площадь и все слои
-  // Для 2К: расход считается только по ОСНОВЕ, кратно комплекту
-  // Для 1К: расход кратно таре (container)
-  const baseConsKg = a * (cons/1000) * layerCount; // теоретический расход основы/материала
+  // Единицы: kg → расход г/м², тара кг, цена ₽/кг
+  //           l  → расход мл/м², тара л,  цена ₽/л
+  const unitLabel = unit === 'l' ? 'л'    : 'кг';
+  const consLabel = unit === 'l' ? 'мл/м²': 'г/м²';
+  const priceLabel= unit === 'l' ? '₽/л'  : '₽/кг';
 
-  let containers, kits, actualMatKg, costMat, totalKg;
-
-  if(comp==='2c' && (prod?.base || kpLayer.customContainer)){
-    const base = kpLayer.customContainer != null ? kpLayer.customContainer : (parseFloat(prod?.base)||18);
-    const hardener = kpLayer.customHardener != null ? kpLayer.customHardener : (parseFloat(prod?.hardener)||3);
-    // Кол-во комплектов кратно 1, делим по основе
-    kits = Math.ceil(baseConsKg / base);
-    // Фактический расход: кол-во компл × (основа + отвердитель)
-    actualMatKg = kits * (base + hardener);
-    // Цена считается от фактической массы (основа + отвердитель)
-    costMat = actualMatKg * price / 1000;
-    containers = null;
-    totalKg = actualMatKg;
+  // Теоретический расход в единицах тары (кг или л)
+  // Для разбавителей (consumption=0): количество = layerCount × размер тары
+  let baseConsUnit;
+  if(category === 'thinner' && cons === 0){
+    // Разбавитель добавлен как отдельная позиция — layerCount = кол-во упаковок
+    const tarSize = kpLayer.customContainer != null
+      ? kpLayer.customContainer
+      : (parseFloat(prod?.container) || (unit==='l' ? 10 : 25));
+    baseConsUnit = layerCount * tarSize;
   } else {
-    const cw = kpLayer.customContainer != null ? kpLayer.customContainer : (parseFloat(prod?.container)||25);
-    // Кол-во тар кратно 1, в большую сторону
-    containers = Math.ceil(baseConsKg / cw);
-    actualMatKg = containers * cw;
-    costMat = actualMatKg * price / 1000;
-    kits = null;
-    totalKg = actualMatKg;
+    baseConsUnit = a * (cons / 1000) * layerCount;
   }
 
-  // Разбавитель считается от теоретического расхода основы (не от округлённого)
-  const thinnerKg = baseConsKg * (thinnerPct/100);
-  // Стоимость разбавителя
-  const thinnerCost = thinnerKg * (thinnerProd?.price||0) / 1000;
+  // Разбавитель (всегда в кг)
+  const thinnerPct  = prod?.thinnerPct || 0;
+  const thinnerId   = prod?.thinner_id || null;
+  const thinnerProd = thinnerId ? getProduct(thinnerId) : null;
+  // Разбавитель считается от теоретического расхода (в кг — для kg-материала тот же baseConsUnit)
+  const thinnerAmt  = baseConsUnit * (thinnerPct / 100); // в тех же единицах что и материал
+  const thinnerCost = thinnerAmt * (thinnerProd?.price || 0); // ₽
 
-  return {name, category, comp, price, cons, layerCount,
-    baseConsKg:+baseConsKg.toFixed(2),   // теор. расход до округления
-    totalKg:+totalKg.toFixed(2),          // фактический расход (кратно таре/комплекту)
-    thinnerKg:+thinnerKg.toFixed(3), thinnerName:thinnerProd?.name||'',
-    thinnerCost:Math.round(thinnerCost), containers, kits,
-    costMat:Math.round(costMat), prod, kpLayer};
+  let containers, kits, actualAmt, costMat;
+
+  if(comp === '2c' && (prod?.base || kpLayer.customContainer)){
+    // 2К: расчёт кратно комплекту по ОСНОВЕ
+    const base     = kpLayer.customContainer != null ? kpLayer.customContainer : (parseFloat(prod?.base)||18);
+    const hardener = kpLayer.customHardener  != null ? kpLayer.customHardener  : (parseFloat(prod?.hardener)||3);
+    kits       = Math.ceil(baseConsUnit / base);
+    actualAmt  = kits * (base + hardener);   // в единицах тары
+    costMat    = actualAmt * price;           // ₽
+    containers = null;
+  } else {
+    // 1К: расчёт кратно таре
+    const cw   = kpLayer.customContainer != null ? kpLayer.customContainer : (parseFloat(prod?.container)||25);
+    containers = Math.ceil(baseConsUnit / cw);
+    actualAmt  = containers * cw;             // в единицах тары
+    costMat    = actualAmt * price;           // ₽
+    kits       = null;
+  }
+
+  return {
+    name, category, comp, unit, unitLabel, consLabel, priceLabel,
+    price, cons, layerCount,
+    baseConsUnit: +baseConsUnit.toFixed(3),   // теор. расход (кг или л)
+    actualAmt:    +actualAmt.toFixed(3),      // факт. расход кратно таре (кг или л)
+    thinnerAmt:   +thinnerAmt.toFixed(3),     // разбавитель (кг или л)
+    thinnerName:  thinnerProd?.name || '',
+    thinnerCost:  Math.round(thinnerCost),
+    containers, kits,
+    costMat: Math.round(costMat),
+    prod, kpLayer
+  };
 }
 
-/* ===== РАСЧЁТ КП ===== */
 function calcKP(){
   const kp = state.kp;
   const area = parseFloat(kp.area)||0;
   const layers = kp.layers.map(l=>calcLayer(l,area));
-  const totalMat = layers.reduce((s,l)=>s+l.costMat+l.thinnerCost,0);
-  const total = Math.round(totalMat);
-  const matKg = layers.reduce((s,l)=>s+l.totalKg,0);
-  const thinnerKgTotal = layers.reduce((s,l)=>s+(l.thinnerKg||0),0);
-  const totalKg = matKg + thinnerKgTotal;
-  const matCost = layers.reduce((s,l)=>s+l.costMat,0);
-  const thinnerCostTotal = layers.reduce((s,l)=>s+l.thinnerCost,0);
-  const pricePerKg = totalKg>0 ? total/totalKg : 0;
-  const pricePerKgMat = matKg>0 ? matCost/matKg : 0;
-  const pricePerM2 = area>0 ? total/area : 0;
-  return {area, layers, totalMat:Math.round(totalMat), total,
-    totalKg:+totalKg.toFixed(2), matKg:+matKg.toFixed(2), thinnerKgTotal:+thinnerKgTotal.toFixed(2),
-    matCost:Math.round(matCost), thinnerCostTotal:Math.round(thinnerCostTotal),
-    pricePerKg:+pricePerKg.toFixed(2), pricePerKgMat:+pricePerKgMat.toFixed(2), pricePerM2:+pricePerM2.toFixed(2)};
+  const matCost       = layers.reduce((s,l)=>s+l.costMat, 0);
+  const thinnerCostTotal = layers.reduce((s,l)=>s+l.thinnerCost, 0);
+  const total         = Math.round(matCost + thinnerCostTotal);
+  const pricePerM2    = area > 0 ? total / area : 0;
+  // Для суммарного веса/объёма — показываем только кг-материалы
+  // (литровые нельзя складывать с кг напрямую, показываем отдельно)
+  const matKg         = layers.filter(l=>l.unit==='kg').reduce((s,l)=>s+l.actualAmt,0);
+  const matL          = layers.filter(l=>l.unit==='l' ).reduce((s,l)=>s+l.actualAmt,0);
+  const thinnerAmt    = layers.reduce((s,l)=>s+l.thinnerAmt,0);
+  return {area, layers, matCost:Math.round(matCost), thinnerCostTotal:Math.round(thinnerCostTotal),
+    total, pricePerM2:+pricePerM2.toFixed(2),
+    matKg:+matKg.toFixed(2), matL:+matL.toFixed(2), thinnerAmt:+thinnerAmt.toFixed(3)};
 }
 
 /* ===== RENDERS ===== */
+function renderLogin(){
+  const isTg = !!tg?.initData;
+  return `
+  <div style="min-height:80vh;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:24px">
+    <div class="logo" style="width:56px;height:56px;font-size:28px;margin-bottom:16px">🏭</div>
+    <div style="font-size:20px;font-weight:700;margin-bottom:4px">Завод Нева</div>
+    <div style="font-size:13px;color:var(--text3);margin-bottom:32px">Расчёт коммерческих предложений</div>
+    ${isTg?`
+    <button class="btn btn-primary" id="btn-tg-login" style="max-width:280px;margin-bottom:12px">
+      ✈️ Войти через Telegram
+    </button>`:`
+    <div class="card" style="width:100%;max-width:320px">
+      <div class="field"><label>Логин</label><input id="login-user" placeholder="manager1" autocomplete="username"></div>
+      <div class="field"><label>Пароль</label><input id="login-pass" type="password" autocomplete="current-password"></div>
+      <div id="login-err" style="font-size:12px;color:var(--danger);margin-bottom:8px;display:none"></div>
+      <button class="btn btn-primary" id="btn-pass-login">Войти</button>
+    </div>`}
+    <div style="font-size:11px;color:var(--text3);margin-top:20px;text-align:center">
+      Данные синхронизируются между всеми вашими устройствами
+    </div>
+  </div>`;
+}
 function render(){
   const root=document.getElementById('root');
+
   const s=state.screen;
   if(s==='home') root.innerHTML=renderHome();
   else if(s==='kp_start') root.innerHTML=renderKPStart();
@@ -347,8 +459,9 @@ function renderHome(){
   return `
   <div class="header">
     <div class="logo">🏭</div>
-    <div><div class="header-title">Завод Нева</div>
-    <div class="header-sub">Расчёт коммерческих предложений</div></div>
+    <div style="flex:1"><div class="header-title">Завод Нева</div>
+    <div class="header-sub">${auth.name?esc(auth.name)+' · ':''} ${auth.source==='telegram'?'Telegram':'Браузер'}</div></div>
+    <button class="btn btn-secondary btn-sm" id="btn-logout" style="flex-shrink:0">Выйти</button>
   </div>
   <div class="menu-item" id="menu-new-kp">
     <div class="menu-icon">📋</div>
@@ -455,12 +568,16 @@ function renderKPBuild(){
     const price=l.customPrice!=null?l.customPrice:(prod?.price||0);
     const cons=l.customConsumption!=null?l.customConsumption:(prod?.consumption||0);
     const a=parseFloat(kp.area)||0;
-    const totalKg=a*(cons/1000)*(l.layers||1);
-    const costEst=Math.round(totalKg*price/1000);
+    const baseAmt=a*(cons/1000)*(l.layers||1); // в кг или л
+    const costEst=Math.round(baseAmt*price);
     const isExpanded = state.expandedLayer === i;
     const color = l.customColor || prod?.color || '';
     const container = l.customContainer != null ? l.customContainer : (prod?.container || prod?.base ? (prod.comp==='2c'?prod.base:prod.container) : 25);
+    const unit = l.customUnit || prod?.unit || 'kg';
     const is2c = comp==='2c';
+    const uLabel = unit==='l' ? 'л' : 'кг';
+    const cLabel = unit==='l' ? 'мл/м²' : 'г/м²';
+    const pLabel = unit==='l' ? '₽/л' : '₽/кг';
     return `<div class="layer-item${isExpanded?' layer-item-open':''}">
       <div class="layer-header">
         <span class="layer-badge ${catBadgeClass(cat)}">${catLabel(cat)}</span>
@@ -474,15 +591,27 @@ function renderKPBuild(){
       <div class="layer-stats">
         <span class="layer-stat">${comp==='1c'?'1К':'2К'}</span>
         <span class="layer-stat">${l.layers||1} сл.</span>
-        <span class="layer-stat">${cons} г/м²</span>
-        <span class="layer-stat">${price} ₽/кг</span>
+        <span class="layer-stat">${cons} ${cLabel}</span>
+        <span class="layer-stat">${price} ${pLabel}</span>
         ${color?`<span class="layer-stat" style="color:var(--text2)">${esc(color)}</span>`:''}
-        ${totalKg>0?`<span class="layer-stat">теор. ${fmtN(totalKg,1)} кг</span>`:''}
+        ${baseAmt>0?`<span class="layer-stat">≈${fmtN(baseAmt,1)} ${uLabel}</span>`:''}
       </div>
       ${a>0?`<div class="layer-price">≈ ${fmtRub(costEst)}</div>`:''}
       ${isExpanded?`
       <div class="layer-edit-form">
         <div class="layer-edit-divider"></div>
+        <div class="type-grid" style="margin-bottom:10px">
+          <div class="type-card${(l.customUnit||unit)==='kg'?' selected':''}" data-le-unit="kg" data-li="${i}">
+            <div class="type-card-icon" style="font-size:15px">⚖️</div>
+            <div class="type-card-name" style="font-size:11px">Килограммы</div>
+            <div class="type-card-sub">г/м² · кг · ₽/кг</div>
+          </div>
+          <div class="type-card${(l.customUnit||unit)==='l'?' selected':''}" data-le-unit="l" data-li="${i}">
+            <div class="type-card-icon" style="font-size:15px">🧴</div>
+            <div class="type-card-name" style="font-size:11px">Литры</div>
+            <div class="type-card-sub">мл/м² · л · ₽/л</div>
+          </div>
+        </div>
         <div class="field-row" style="margin-bottom:8px">
           <div class="field" style="margin-bottom:0"><label>Название</label>
             <input class="le-name" data-li="${i}" value="${esc(name)}" placeholder="Название материала"></div>
@@ -490,19 +619,22 @@ function renderKPBuild(){
             <input class="le-color" data-li="${i}" value="${esc(color)}" placeholder="RAL 7040"></div>
         </div>
         <div class="field-row" style="margin-bottom:8px">
-          <div class="field" style="margin-bottom:0"><label>Цена (₽/кг)</label>
+          <div class="field" style="margin-bottom:0">
+            <label>Цена (${(l.customUnit||unit)==='l'?'₽/л':'₽/кг'})</label>
             <input class="le-price" data-li="${i}" type="number" inputmode="decimal" value="${price}"></div>
-          <div class="field" style="margin-bottom:0"><label>Расход (г/м²)</label>
+          <div class="field" style="margin-bottom:0">
+            <label>Расход (${(l.customUnit||unit)==='l'?'мл':'г'}/м²)</label>
             <input class="le-cons" data-li="${i}" type="number" inputmode="decimal" value="${cons}"></div>
         </div>
         <div class="field-row" style="margin-bottom:8px">
-          <div class="field" style="margin-bottom:0"><label>Слоёв</label>
+          <div class="field" style="margin-bottom:0"><label>${cat==="thinner"&&cons===0?"Упаковок":"Слоёв"}</label>
             <input class="le-layers" data-li="${i}" type="number" inputmode="numeric" min="1" value="${l.layers||1}"></div>
           <div class="field" style="margin-bottom:0">
-            <label>${is2c?'Основа (кг/компл)':'Вес тары (кг)'}</label>
-            <input class="le-container" data-li="${i}" type="number" inputmode="decimal" value="${is2c?(l.customContainer||prod?.base||18):(l.customContainer||prod?.container||25)}"></div>
+            <label>${(l.customUnit||unit)==='l'?'Объём тары (л)':is2c?'Основа (кг/компл)':'Вес тары (кг)'}</label>
+            <input class="le-container" data-li="${i}" type="number" inputmode="decimal"
+              value="${(l.customUnit||unit)==='l'?(l.customContainer||prod?.container||10):is2c?(l.customContainer||prod?.base||18):(l.customContainer||prod?.container||25)}"></div>
         </div>
-        ${is2c?`<div class="field" style="margin-bottom:8px"><label>Отвердитель (кг/компл)</label>
+        ${is2c && (l.customUnit||unit)!=='l' ?`<div class="field" style="margin-bottom:8px"><label>Отвердитель (кг/компл)</label>
           <input class="le-hardener" data-li="${i}" type="number" inputmode="decimal" value="${l.customHardener||prod?.hardener||3}"></div>`:''}
         <button class="btn btn-primary" style="padding:8px;font-size:13px" data-save-layer="${i}">✓ Применить</button>
       </div>`:''}
@@ -520,11 +652,14 @@ function renderAddLayer(){
   const products=state.catalog.filter(p=>p.category===selCat);
   return `
   <div class="nav"><button class="nav-back" id="back-kp-build">← Назад</button><div class="nav-title">Добавить материал</div></div>
-  <div class="type-grid" style="grid-template-columns:repeat(4,1fr);gap:6px;margin-bottom:14px">
-    ${['primer','enamel','lacquer','thinner'].map(c=>`
-    <div class="type-card${selCat===c?' selected':''}" data-cat="${c}" style="padding:8px 4px">
-      <div class="type-card-icon" style="font-size:16px">${c==='primer'?'🟡':c==='enamel'?'🔵':c==='lacquer'?'🟣':'💧'}</div>
-      <div class="type-card-name" style="font-size:11px">${catLabel(c)}</div>
+  <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:6px;margin-bottom:14px">
+    ${['primer','enamel','lacquer','primer_enamel','water_emulsion','thinner'].map(c=>`
+    <div class="type-card${selCat===c?' selected':''}" data-cat="${c}" style="padding:7px 4px">
+      <div class="type-card-icon" style="font-size:14px">${
+        c==='primer'?'🟡':c==='enamel'?'🔵':c==='lacquer'?'🟣':
+        c==='primer_enamel'?'🟠':c==='water_emulsion'?'🩵':'💧'
+      }</div>
+      <div class="type-card-name" style="font-size:10px;line-height:1.2">${catLabel(c)}</div>
     </div>`).join('')}
   </div>
   ${products.length===0?`<div class="empty"><div class="empty-icon">📦</div>Нет материалов в этой категории</div>`:''}
@@ -575,7 +710,7 @@ function renderKPResult(){
   <div style="font-size:12px;color:var(--text3);margin-bottom:12px">${r.area} м² · ${kp.layers.length} позиций</div>
 
   <div class="price-hero">
-    <div style="font-size:12px;color:var(--text3);margin-bottom:4px">ИТОГО</div>
+    <div style="font-size:12px;color:var(--text3);margin-bottom:4px">ИТОГО · ${r.area} м²</div>
     <div class="price-hero-val">${fmtRub(r.total)}</div>
     <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:12px">
       <div style="background:var(--bg4);border-radius:8px;padding:8px;text-align:center">
@@ -583,20 +718,11 @@ function renderKPResult(){
         <div style="font-size:11px;color:var(--text3);margin-top:2px">₽ / м²</div>
       </div>
       <div style="background:var(--bg4);border-radius:8px;padding:8px;text-align:center">
-        <div style="font-size:15px;font-weight:700;color:var(--accent2)">${r.totalKg>0?fmtRub(Math.round(r.pricePerKg)):'-'}</div>
-        <div style="font-size:11px;color:var(--text3);margin-top:2px">₽ / кг (всё)</div>
+        <div style="font-size:13px;font-weight:600;color:var(--text2)">${r.matKg>0?fmtN(r.matKg,1)+' кг':''}${r.matKg>0&&r.matL>0?' + ':''}${r.matL>0?fmtN(r.matL,1)+' л':''}</div>
+        <div style="font-size:11px;color:var(--text3);margin-top:2px">материалы</div>
       </div>
     </div>
-    <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:6px">
-      <div style="background:var(--bg4);border-radius:8px;padding:8px;text-align:center">
-        <div style="font-size:13px;font-weight:600;color:var(--text2)">${fmtN(r.matKg,1)} кг</div>
-        <div style="font-size:11px;color:var(--text3);margin-top:2px">материалы · ${r.matKg>0?fmtRub(Math.round(r.pricePerKgMat))+' ₽/кг':'-'}</div>
-      </div>
-      <div style="background:var(--bg4);border-radius:8px;padding:8px;text-align:center">
-        <div style="font-size:13px;font-weight:600;color:var(--text2)">${fmtN(r.thinnerKgTotal,2)} кг</div>
-        <div style="font-size:11px;color:var(--text3);margin-top:2px">разбавители · ${fmtRub(r.thinnerCostTotal)}</div>
-      </div>
-    </div>
+
   </div>
 
   <div class="section-title">Состав системы покрытия</div>
@@ -609,33 +735,21 @@ function renderKPResult(){
           <div>${esc(l.name)}</div>
           <div class="rt-sub">${l.layerCount} сл. · ${l.cons} г/м²</div>
           <div class="rt-sub">
-            теор. ${fmtN(l.baseConsKg,2)} кг →
-            <strong>${l.comp==='2c'?`${l.kits} компл. (${fmtN(l.totalKg,1)} кг)`:`${l.containers} шт. (${fmtN(l.totalKg,1)} кг)`}</strong>
+            <strong>${l.comp==='2c'
+              ? `${l.kits} компл. × ${l.unit==='l'?(l.kpLayer.customContainer||l.prod?.container||10):(l.kpLayer.customContainer||l.prod?.base||18)} ${l.unitLabel} = ${fmtN(l.actualAmt,2)} ${l.unitLabel}`
+              : `${l.containers} шт. × ${l.unit==='l'?(l.kpLayer.customContainer||l.prod?.container||10):(l.kpLayer.customContainer||l.prod?.container||25)} ${l.unitLabel} = ${fmtN(l.actualAmt,2)} ${l.unitLabel}`}
+            </strong>
           </div>
-          ${l.thinnerKg>0?`<div class="rt-sub">+ разб.: ${fmtN(l.thinnerKg,3)} кг ${esc(l.thinnerName)}</div>`:''}
-          <div class="rt-sub" style="color:var(--accent2)">${l.totalKg>0?fmtRub(Math.round((l.costMat+l.thinnerCost)/l.totalKg))+' ₽/кг':''}</div>
+          ${l.thinnerAmt>0?`<div class="rt-sub">+ разб.: ${fmtN(l.thinnerAmt,3)} ${l.unitLabel} ${esc(l.thinnerName)}</div>`:''}
+          <div class="rt-sub" style="color:var(--accent2)">${l.actualAmt>0?fmtRub(Math.round((l.costMat+l.thinnerCost)/l.actualAmt))+' '+l.priceLabel:''}</div>
         </div>
         <div class="rt-val">${fmtRub(l.costMat+l.thinnerCost)}</div>
       </div>`;
     }).join('')}
-    <div class="rt-row" style="background:var(--bg4)">
-      <div class="rt-badge" style="background:transparent"></div>
-      <div class="rt-name" style="color:var(--text2)">Материалы
-        <div class="rt-sub">${fmtN(r.matKg,1)} кг · ${r.matKg>0?fmtRub(Math.round(r.pricePerKgMat))+' ₽/кг':''}</div>
-      </div>
-      <div class="rt-val">${fmtRub(r.matCost)}</div>
-    </div>
-    ${r.thinnerKgTotal>0?`<div class="rt-row" style="background:var(--bg4)">
-      <div class="rt-badge" style="background:rgba(61,214,140,.4)"></div>
-      <div class="rt-name" style="color:var(--text2)">Разбавители
-        <div class="rt-sub">${fmtN(r.thinnerKgTotal,2)} кг</div>
-      </div>
-      <div class="rt-val">${fmtRub(r.thinnerCostTotal)}</div>
-    </div>`:''}
     <div class="rt-row rt-total">
       <div class="rt-badge" style="background:var(--accent)"></div>
       <div class="rt-name">ИТОГО
-        <div class="rt-sub" style="color:var(--accent2)">${r.totalKg} кг · ${r.area} м² · ${fmtRub(Math.round(r.pricePerM2))} ₽/м²</div>
+        <div class="rt-sub" style="color:var(--accent2)">${fmtRub(Math.round(r.pricePerM2))} ₽/м²</div>
       </div>
       <div class="rt-val">${fmtRub(r.total)}</div>
     </div>
@@ -684,7 +798,7 @@ function renderViewProposal(){
     ${r.layers.map(l=>`<div class="rt-row">
       <div class="rt-badge" style="background:${catColor(l.kpLayer?.category||l.prod?.category||'custom')}"></div>
       <div class="rt-name"><div>${esc(l.name)}</div>
-        <div class="rt-sub">${l.layerCount} сл. · ${fmtN(l.totalKg,1)} кг</div></div>
+        <div class="rt-sub">${fmtN(l.actualAmt,2)} ${l.unitLabel||"кг"}</div></div>
       <div class="rt-val">${fmtRub(l.costMat+l.thinnerCost)}</div>
     </div>`).join('')}
     <div class="rt-row rt-total">
@@ -700,7 +814,7 @@ function renderViewProposal(){
 }
 
 function renderCatalog(){
-  const cats=['primer','enamel','lacquer','thinner'];
+  const cats=['primer','enamel','lacquer','primer_enamel','water_emulsion','thinner'];
   return `
   <div class="nav"><button class="nav-back" id="back-home">← Назад</button><div class="nav-title">Каталог материалов</div></div>
   <button class="btn btn-primary" id="add-product" style="margin-bottom:14px">+ Добавить материал</button>
@@ -726,42 +840,85 @@ function renderCatalog(){
 }
 
 function renderEditProduct(){
-  const t=state.editProduct||{id:'new',category:'primer',comp:'1c',name:'',color:'',price:0,consumption:150,container:25,base:18,hardener:3,thinner_id:'th1',thinnerPct:10,comment:''};
-  const isNew=t.id==='new';
-  const thinners=state.catalog.filter(p=>p.category==='thinner');
+  const t = state.editProduct || {
+    id:'new', category:'primer', comp:'1c', unit:'kg',
+    name:'', color:'', price:0, consumption:150,
+    container:25, base:18, hardener:3,
+    thinner_id:'', thinnerPct:0, comment:''
+  };
+  const isNew = t.id === 'new';
+  const is2c  = t.comp === '2c';
+  const isL   = t.unit === 'l';
+  const isTh  = t.category === 'thinner'; // только разбавители без расхода
+  const thinners = state.catalog.filter(p => p.category === 'thinner');
+
+  const uLabel  = isL ? 'л'    : 'кг';
+  const cLabel  = isL ? 'мл/м²': 'г/м²';
+  const pLabel  = isL ? '₽/л'  : '₽/кг';
+  const tLabel  = isL ? 'Объём тары (л)' : (is2c ? 'Основа (кг/компл)' : 'Вес тары (кг)');
+
   return `
   <div class="nav"><button class="nav-back" id="back-catalog">← Назад</button>
-    <div class="nav-title">${isNew?'Новый материал':'Редактировать'}</div></div>
+    <div class="nav-title">${isNew ? 'Новый материал' : 'Редактировать'}</div></div>
+
   <div class="card">
     <div class="section-title">Категория</div>
-    <div class="type-grid" style="grid-template-columns:repeat(4,1fr);gap:6px;margin-bottom:14px">
-      ${['primer','enamel','lacquer','thinner'].map(c=>`
+    <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:6px;margin-bottom:12px">
+      ${['primer','enamel','lacquer','primer_enamel','water_emulsion','thinner'].map(c=>`
       <div class="type-card${t.category===c?' selected':''}" data-ecat="${c}" style="padding:8px 4px">
-        <div class="type-card-icon" style="font-size:16px">${c==='primer'?'🟡':c==='enamel'?'🔵':c==='lacquer'?'🟣':'💧'}</div>
+        <div class="type-card-icon" style="font-size:14px">${c==='primer'?'🟡':c==='enamel'?'🔵':c==='lacquer'?'🟣':c==='primer_enamel'?'🟠':c==='water_emulsion'?'🩵':'💧'}</div>
         <div class="type-card-name" style="font-size:11px">${catLabel(c)}</div>
       </div>`).join('')}
     </div>
-    <div class="type-grid">
-      <div class="type-card${t.comp==='1c'?' selected':''}" id="ecomp-1c"><div class="type-card-name">1К — Однокомп.</div></div>
-      <div class="type-card${t.comp==='2c'?' selected':''}" id="ecomp-2c"><div class="type-card-name">2К — Двухкомп.</div></div>
+
+    <div class="section-title">Компонентность</div>
+    <div class="type-grid" style="margin-bottom:12px">
+      <div class="type-card${!is2c?' selected':''}" id="ecomp-1c">
+        <div class="type-card-name">1К</div><div class="type-card-sub">Однокомп.</div></div>
+      <div class="type-card${is2c?' selected':''}" id="ecomp-2c">
+        <div class="type-card-name">2К</div><div class="type-card-sub">Двухкомп.</div></div>
     </div>
-    <div class="field"><label>Название</label><input id="ep-name" value="${esc(t.name)}"></div>
+
+    <div class="section-title">Единица измерения</div>
+    <div class="type-grid" style="margin-bottom:12px">
+      <div class="type-card${!isL?' selected':''}" id="eunit-kg">
+        <div class="type-card-icon" style="font-size:18px">⚖️</div>
+        <div class="type-card-name">Килограммы</div>
+        <div class="type-card-sub">г/м² · кг · ₽/кг</div>
+      </div>
+      <div class="type-card${isL?' selected':''}" id="eunit-l">
+        <div class="type-card-icon" style="font-size:18px">🧴</div>
+        <div class="type-card-name">Литры</div>
+        <div class="type-card-sub">мл/м² · л · ₽/л</div>
+      </div>
+    </div>
+
+    <div class="field"><label>Название</label>
+      <input id="ep-name" value="${esc(t.name)}" placeholder="Напр: Грунт ЭП-0199"></div>
     <div class="field-row">
-      <div class="field"><label>Цвет / обозначение</label><input id="ep-color" value="${esc(t.color)}"></div>
-      <div class="field"><label>Цена (₽/кг)</label><input id="ep-price" type="number" inputmode="decimal" value="${t.price}"></div>
+      <div class="field"><label>Цвет / марка</label>
+        <input id="ep-color" value="${esc(t.color)}" placeholder="RAL 7040"></div>
+      <div class="field"><label>Цена (${pLabel})</label>
+        <input id="ep-price" type="number" inputmode="decimal" value="${t.price||''}"></div>
     </div>
+    <div class="field"><label>Комментарий</label>
+      <input id="ep-comment" value="${esc(t.comment||'')}"></div>
   </div>
-  ${t.category!=='thinner'?`
+
+  ${!isTh ? `
   <div class="card">
-    <div class="section-title">Расход и нанесение</div>
-    <div class="field"><label>Расход за 1 слой (г/м²)</label><input id="ep-cons" type="number" inputmode="decimal" value="${t.consumption}"></div>
-    ${t.comp==='2c'?`
+    <div class="section-title">Расход и тара</div>
     <div class="field-row">
-      <div class="field"><label>Основа (кг/компл)</label><input id="ep-base" type="number" inputmode="decimal" value="${t.base||18}"></div>
-      <div class="field"><label>Отвердитель (кг/компл)</label><input id="ep-hard" type="number" inputmode="decimal" value="${t.hardener||3}"></div>
-    </div>`:`
-    <div class="field"><label>Вес тары (кг)</label><input id="ep-cont" type="number" inputmode="decimal" value="${t.container||25}"></div>`}
+      <div class="field"><label>Расход 1 слой (${cLabel})</label>
+        <input id="ep-cons" type="number" inputmode="decimal" value="${t.consumption||''}"></div>
+      <div class="field"><label>${tLabel}</label>
+        <input id="ep-cont" type="number" inputmode="decimal" value="${isL ? (t.container||10) : (is2c ? (t.base||18) : (t.container||25))}"></div>
+    </div>
+    ${is2c ? `
+    <div class="field"><label>Отвердитель (кг/компл)</label>
+      <input id="ep-hard" type="number" inputmode="decimal" value="${t.hardener||3}"></div>` : ''}
   </div>
+
   <div class="card">
     <div class="section-title">Разбавитель</div>
     <div class="field-row">
@@ -771,17 +928,17 @@ function renderEditProduct(){
           ${thinners.map(th=>`<option value="${th.id}"${t.thinner_id===th.id?' selected':''}>${esc(th.name)}</option>`).join('')}
         </select>
       </div>
-      <div class="field"><label>% разбавления</label><input id="ep-tpct" type="number" inputmode="decimal" value="${t.thinnerPct||0}"></div>
+      <div class="field"><label>% разбавления</label>
+        <input id="ep-tpct" type="number" inputmode="decimal" value="${t.thinnerPct||0}"></div>
     </div>
-  </div>`:''}
-  <div class="card">
-    <div class="field"><label>Комментарий</label><input id="ep-comment" value="${esc(t.comment||'')}"></div>
-  </div>
+  </div>` : ''}
+
   <div class="btn-row">
-    ${!isNew?`<button class="btn btn-danger" id="del-product">🗑 Удалить</button>`:''}
+    ${!isNew ? `<button class="btn btn-danger" id="del-product">🗑 Удалить</button>` : ''}
     <button class="btn btn-primary" id="save-product">💾 Сохранить</button>
   </div>`;
 }
+
 
 function renderSchemes(){
   return `
@@ -845,9 +1002,7 @@ td{padding:7px 10px;border-bottom:1px solid #eee;font-size:12px;vertical-align:t
   </div>
   <div style="text-align:right">
     <div style="font-size:13px;color:#555">₽/м²: <strong>${fmtRub(Math.round(r.pricePerM2))}</strong></div>
-    <div style="font-size:13px;color:#555;margin-top:3px">₽/кг (с разб.): <strong>${fmtRub(Math.round(r.pricePerKg))}</strong></div>
-    <div style="font-size:13px;color:#555;margin-top:3px">₽/кг (мат.): <strong>${fmtRub(Math.round(r.pricePerKgMat))}</strong></div>
-    <div style="font-size:12px;color:#888;margin-top:3px">мат. ${r.matKg} кг · разб. ${r.thinnerKgTotal} кг</div>
+    <div style="font-size:12px;color:#888;margin-top:3px">${r.matKg>0?r.matKg+' кг':''}${r.matKg>0&&r.matL>0?' · ':''}${r.matL>0?r.matL+' л':''}</div>
   </div>
 </div>
 <h2>Состав системы покрытия</h2>
@@ -856,18 +1011,18 @@ td{padding:7px 10px;border-bottom:1px solid #eee;font-size:12px;vertical-align:t
 ${r.layers.map(l=>{
   const cat=l.kpLayer?.category||l.prod?.category||'custom';
   const bc='b-'+cat;
-  const qty=l.comp==='2c'&&l.kits?l.kits+' компл.':(l.containers?l.containers+' шт.':fmtN(l.totalKg,1)+' кг');
+  const qty=l.comp==='2c'&&l.kits?`${l.kits} компл. = ${fmtN(l.actualAmt,2)} ${l.unitLabel}`:(l.containers?`${l.containers} шт. = ${fmtN(l.actualAmt,2)} ${l.unitLabel}`:fmtN(l.actualAmt,2)+' '+(l.unitLabel||'кг'));
   return `<tr><td><span class="badge ${bc}">${catLabel(cat)}</span></td>
     <td>${esc(l.name)}${l.thinnerKg>0?`<br><span style="font-size:10px;color:#888">+ разб. ${fmtN(l.thinnerKg,2)} кг ${esc(l.thinnerName)}</span>`:''}</td>
     <td>${l.layerCount}</td>
     <td>${l.cons} г/м²</td>
-    <td>теор. ${fmtN(l.baseConsKg,2)} кг<br><strong>${l.comp==='2c'?`${l.kits} компл. = ${fmtN(l.totalKg,1)} кг`:`${l.containers} шт. = ${fmtN(l.totalKg,1)} кг`}</strong></td>
-    <td>${l.totalKg>0?fmtRub(Math.round((l.costMat+l.thinnerCost)/l.totalKg)):'-'}</td>
+    <td>${qty}</td>
+    <td>${l.actualAmt>0?fmtRub(Math.round((l.costMat+l.thinnerCost)/l.actualAmt))+' '+l.priceLabel:'-'}</td>
     <td>${fmtRub(l.costMat+l.thinnerCost)}</td></tr>`;
 }).join('')}
-<tr class="subtotal"><td colspan="4">Материалы · ${r.matKg} кг</td><td>${r.matKg>0?fmtRub(Math.round(r.pricePerKgMat))+' ₽/кг':''}</td><td>${fmtRub(r.matCost)}</td></tr>
+<tr class="subtotal"><td colspan="4">Материалы${r.matKg>0?" · "+r.matKg+" кг":""}${r.matL>0?" · "+r.matL+" л":""}</td><td></td><td>${fmtRub(r.matCost)}</td></tr>
 ${r.thinnerKgTotal>0?`<tr class="subtotal"><td colspan="4">Разбавители · ${r.thinnerKgTotal} кг</td><td>—</td><td>${fmtRub(r.thinnerCostTotal)}</td></tr>`:''}
-<tr class="subtotal"><td colspan="4">Итого · ${r.totalKg} кг</td><td>${fmtRub(Math.round(r.pricePerKg))} ₽/кг</td><td><td>${fmtRub(r.totalMat)}</td></tr>
+
 
 <tr class="total"><td colspan="4">ИТОГО</td><td>${fmtRub(Math.round(r.pricePerM2))} ₽/м²</td><td>${fmtRub(r.total)}</td></tr>
 </table>
@@ -886,18 +1041,30 @@ ${kp.note?`<div style="background:#fffde7;border:1px solid #ffe082;border-radius
 
 /* ===== COLLECT ===== */
 function collectProduct(){
-  const catEl=document.querySelector('[data-ecat].selected');
-  const cat=catEl?.dataset?.ecat||(state.editProduct?.category||'primer');
-  const comp=document.querySelector('#ecomp-2c.selected')?'2c':'1c';
-  const v=id=>{const el=document.getElementById(id);return el?el.value:''};
-  const n=id=>{const el=document.getElementById(id);return el?parseFloat(el.value)||0:0};
-  return{
-    category:cat,comp,
-    name:v('ep-name'),color:v('ep-color'),price:n('ep-price'),
-    consumption:n('ep-cons'),container:n('ep-cont'),
-    base:n('ep-base'),hardener:n('ep-hard'),
-    thinner_id:v('ep-thinner')||null,thinnerPct:n('ep-tpct'),
-    comment:v('ep-comment'),
+  const catEl = document.querySelector('[data-ecat].selected');
+  const cat  = catEl?.dataset?.ecat || (state.editProduct?.category || 'primer');
+  const comp = document.querySelector('#ecomp-2c.selected') ? '2c' : '1c';
+  const unit = document.querySelector('#eunit-l.selected')  ? 'l'  : 'kg';
+  const isL  = unit === 'l';
+  const is2c = comp === '2c';
+  const v = id => { const el = document.getElementById(id); return el ? el.value.trim() : ''; };
+  const n = id => { const el = document.getElementById(id); return el ? parseFloat(el.value) || 0 : 0; };
+
+  const contVal = n('ep-cont');
+  return {
+    category: cat, comp, unit,
+    name:    v('ep-name'),
+    color:   v('ep-color'),
+    price:   n('ep-price'),
+    comment: v('ep-comment'),
+    // Расход и тара
+    consumption: n('ep-cons'),
+    container:   isL ? contVal : (is2c ? null  : contVal),
+    base:        is2c && !isL  ? contVal : null,
+    hardener:    is2c && !isL  ? n('ep-hard') : null,
+    // Разбавитель
+    thinner_id:  v('ep-thinner') || null,
+    thinnerPct:  n('ep-tpct'),
   };
 }
 
@@ -905,7 +1072,42 @@ function collectProduct(){
 function on(id,fn){const el=document.getElementById(id);if(el)el.addEventListener('click',fn)}
 
 function bindEvents(){
+  // LOGIN
+  on('btn-tg-login', async ()=>{
+    try{
+      show('⏳ Авторизация...');
+      const data = await api('POST','/auth/telegram',{init_data: tg.initData});
+      saveAuth(data);
+      await syncPull();
+      nav('home');
+      show('✅ Добро пожаловать, '+data.name+'!');
+    } catch(e){ show('❌ '+e.message); }
+  });
+  on('btn-pass-login', async ()=>{
+    const u=document.getElementById('login-user')?.value.trim();
+    const p=document.getElementById('login-pass')?.value;
+    if(!u||!p){show('⚠️ Заполните логин и пароль');return}
+    try{
+      show('⏳ Вход...');
+      const data = await api('POST','/auth/browser',{login:u,password:p});
+      saveAuth(data);
+      await syncPull();
+      nav('home');
+      show('✅ Добро пожаловать, '+data.name+'!');
+    } catch(e){
+      const errEl=document.getElementById('login-err');
+      if(errEl){errEl.textContent=e.message;errEl.style.display='block';}
+      show('❌ '+e.message);
+    }
+  });
+
   // HOME
+  on('btn-logout',()=>{
+    clearAuth();
+    state.screen='login';
+    render();
+    show('Вы вышли из системы');
+  });
   on('menu-new-kp',()=>{
     state.kp={name:'',area:'',layers:[],note:''};
     nav('kp_start');
@@ -984,6 +1186,24 @@ function bindEvents(){
     });
   });
 
+  // TOGGLE UNIT IN INLINE EDIT
+  document.querySelectorAll('[data-le-unit]').forEach(el=>{
+    el.addEventListener('click', e=>{
+      e.stopPropagation();
+      const i = parseInt(el.dataset.li);
+      // Сохраняем текущие значения полей перед перерендером
+      const g = cls => document.querySelector(`[data-li="${i}"].${cls}`);
+      const layer = state.kp.layers[i];
+      layer.customUnit       = el.dataset.leUnit;
+      layer.customName       = g('le-name')?.value.trim() || null;
+      layer.customColor      = g('le-color')?.value.trim() || null;
+      layer.customPrice      = parseFloat(g('le-price')?.value) || null;
+      layer.customConsumption= parseFloat(g('le-cons')?.value)  || null;
+      layer.layers           = parseInt(g('le-layers')?.value)  || 1;
+      render();
+    });
+  });
+
   // SAVE LAYER INLINE EDIT
   document.querySelectorAll('[data-save-layer]').forEach(el=>{
     el.addEventListener('click',e=>{
@@ -1005,6 +1225,7 @@ function bindEvents(){
       const prod=layer.productId?getProduct(layer.productId):null;
 
       // Сохраняем только изменённые поля (отличающиеся от оригинала)
+      // customUnit уже сохранён обработчиком data-le-unit при переключении
       layer.customName = newName && newName!==(prod?.name||'') ? newName : null;
       layer.customColor = newColor || null;
       layer.customPrice = newPrice!==(prod?.price||0) ? newPrice : null;
@@ -1056,7 +1277,7 @@ function bindEvents(){
     const r=calcKP();
     const pr={id:genId(),name:state.kp.name||'Без названия',area:parseFloat(state.kp.area),
       layerCount:state.kp.layers.length,total:r.total,date:Date.now(),result:r,kp:JSON.parse(JSON.stringify(state.kp))};
-    state.proposals.push(pr);persist();show('✅ КП сохранено!');
+    state.proposals.push(pr);persistAndSync();show('✅ КП сохранено!');
   });
   on('export-kp',()=>exportPDF(state.kp));
 
@@ -1111,6 +1332,8 @@ function bindEvents(){
   });
   on('ecomp-1c',()=>{if(!state.editProduct)state.editProduct={};state.editProduct.comp='1c';render()});
   on('ecomp-2c',()=>{if(!state.editProduct)state.editProduct={};state.editProduct.comp='2c';render()});
+  on('eunit-kg',()=>{if(!state.editProduct)state.editProduct={};state.editProduct.unit='kg';render()});
+  on('eunit-l', ()=>{if(!state.editProduct)state.editProduct={};state.editProduct.unit='l';render()});
   on('save-product',()=>{
     const t=collectProduct();
     if(!t.name){show('⚠️ Введите название');return}
@@ -1120,12 +1343,12 @@ function bindEvents(){
     } else {
       state.catalog.push({...t,id:genId()});
     }
-    persist();show('✅ Сохранено');nav('catalog');
+    persistAndSync();show('✅ Сохранено');nav('catalog');
   });
   on('del-product',()=>{
     if(confirm('Удалить материал?')){
       state.catalog=state.catalog.filter(p=>p.id!==state.editProduct.id);
-      persist();show('🗑 Удалён');nav('catalog');
+      persistAndSync();show('🗑 Удалён');nav('catalog');
     }
   });
 
@@ -1133,6 +1356,7 @@ function bindEvents(){
   on('back-home',()=>nav('home'));
 }
 
+// При старте: если есть сохранённый токен — сразу показываем приложение и тянем данные с сервера
 render();
 </script>
 </body>
