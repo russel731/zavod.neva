@@ -319,6 +319,26 @@ function genId(){return Date.now().toString(36)+Math.random().toString(36).slice
 function currentZone(){return state.kp.zones[state.currentZoneIdx]||null}
 function newZone(name,area){return {id:genId(),name:name,area:area,layers:[]}}
 
+function handleGoZones(){
+  const nm = document.getElementById('kp-name')?.value.trim() || '';
+  if(!nm){ show('⚠️ Введите название клиента'); return; }
+  state.kp.name = nm;
+  state.kp.info = document.getElementById('kp-info')?.value || '';
+  nav('kp_zones');
+}
+
+function handleZoneMode(mode){
+  const nm = document.getElementById('zone-name')?.value.trim() || '';
+  const ar = document.getElementById('zone-area')?.value || '';
+  if(!ar || parseFloat(ar) <= 0){ show('⚠️ Введите площадь'); return; }
+  const z = newZone(nm || ('Зона ' + (state.kp.zones.length + 1)), ar);
+  state.kp.zones.push(z);
+  state.currentZoneIdx = state.kp.zones.length - 1;
+  state.expandedLayer = null;
+  if(mode === 'scheme') nav('kp_scheme');
+  else nav('kp_build');
+}
+
 /* ===== HELPERS ===== */
 function esc(s){return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;')}
 function fmtN(n,dec=2){return (+n||0).toFixed(dec)}
@@ -494,7 +514,7 @@ function renderKPZones(){
 
 function renderAddZone(){
   return `
-  <div class="nav"><button class="nav-back" id="back-kp-zones">← Назад</button>
+  <div class="nav"><button class="nav-back" onclick="nav('kp_zones')">← Назад</button>
     <div class="nav-title">Новая зона</div></div>
   <div class="card">
     <div class="field"><label>Название зоны</label>
@@ -504,13 +524,13 @@ function renderAddZone(){
   </div>
   <div class="section-title">Способ формирования системы</div>
   <div class="btn-row" style="margin-top:0">
-    <button class="btn btn-secondary" id="zone-mode-scheme"
+    <button class="btn btn-secondary" onclick="handleZoneMode('scheme')"
       style="flex-direction:column;gap:6px;padding:20px 10px;height:auto">
       <span style="font-size:26px">🎨</span>
       <span style="font-size:13px;font-weight:600">Готовая схема</span>
       <span style="font-size:11px;color:var(--text3);font-weight:400">Выбрать из списка</span>
     </button>
-    <button class="btn btn-primary" id="zone-mode-manual"
+    <button class="btn btn-primary" onclick="handleZoneMode('manual')"
       style="flex-direction:column;gap:6px;padding:20px 10px;height:auto">
       <span style="font-size:26px">🔧</span>
       <span style="font-size:13px;font-weight:600">Вручную</span>
@@ -597,7 +617,7 @@ function renderKPStart(){
     </label>
     <textarea id="kp-info" rows="3" placeholder="Адрес объекта, контакты, особые условия...">${esc(kp.info||'')}</textarea></div>
   </div>
-  <button class="btn btn-primary" id="btn-go-zones">Далее → добавить зоны</button>`;
+  <button class="btn btn-primary" onclick="handleGoZones()">Далее → добавить зоны</button>`;
 }
 
 function renderKPScheme(){
@@ -1392,12 +1412,7 @@ function bindEvents(){
     state.currentZoneIdx=null;
     nav('kp_start');
   });
-  on('btn-go-zones',()=>{
-    state.kp.name=document.getElementById('kp-name')?.value.trim()||'';
-    state.kp.info=document.getElementById('kp-info')?.value||'';
-    if(!state.kp.name){show('⚠️ Введите название клиента');return;}
-    nav('kp_zones');
-  });
+  // btn-go-zones handled via onclick
   on('menu-proposals',()=>nav('proposals'));
   on('menu-catalog',()=>nav('catalog'));
   on('menu-schemes',()=>nav('schemes'));
@@ -1493,13 +1508,7 @@ function bindEvents(){
 
   // KP BUILD
   // KP START
-  on('btn-go-zones',()=>{
-    const nm=document.getElementById('kp-name')?.value.trim()||'';
-    if(!nm){show('⚠️ Введите название клиента');return;}
-    state.kp.name=nm;
-    state.kp.info=document.getElementById('kp-info')?.value||'';
-    nav('kp_zones');
-  });
+  // btn-go-zones handled via onclick
 
   // KP ZONES
   on('btn-add-zone',()=>nav('kp_add_zone'));
@@ -1528,26 +1537,8 @@ function bindEvents(){
 
   // ADD ZONE
   on('back-kp-zones',()=>nav('kp_zones'));
-  on('zone-mode-manual',()=>{
-    const nm=document.getElementById('zone-name')?.value.trim()||'';
-    const ar=document.getElementById('zone-area')?.value||'';
-    if(!ar||parseFloat(ar)<=0){show('⚠️ Введите площадь');return;}
-    const z=newZone(nm||'Зона '+(state.kp.zones.length+1),ar);
-    state.kp.zones.push(z);
-    state.currentZoneIdx=state.kp.zones.length-1;
-    state.expandedLayer=null;
-    nav('kp_build');
-  });
-  on('zone-mode-scheme',()=>{
-    const nm=document.getElementById('zone-name')?.value.trim()||'';
-    const ar=document.getElementById('zone-area')?.value||'';
-    if(!ar||parseFloat(ar)<=0){show('⚠️ Введите площадь');return;}
-    const z=newZone(nm||'Зона '+(state.kp.zones.length+1),ar);
-    state.kp.zones.push(z);
-    state.currentZoneIdx=state.kp.zones.length-1;
-    state.expandedLayer=null;
-    nav('kp_scheme');
-  });
+  // zone-mode-manual handled via onclick
+  // zone-mode-scheme handled via onclick
   on('edit-zone-info',()=>nav('kp_add_zone'));
   on('add-layer',()=>{state.addLayerCategory='primer';nav('kp_add_layer')});
   on('go-kp-result2',()=>{state.expandedLayer=null;nav('kp_zones');});
