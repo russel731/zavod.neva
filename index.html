@@ -522,6 +522,8 @@ function render(){
 
   const s=state.screen;
   if(s==='home') root.innerHTML=renderHome();
+  else if(s==='kp_zones') root.innerHTML=renderKPZones();
+  else if(s==='kp_add_zone') root.innerHTML=renderAddZone();
   else if(s==='kp_start') root.innerHTML=renderKPStart();
   else if(s==='kp_scheme') root.innerHTML=renderKPScheme();
   else if(s==='kp_build') root.innerHTML=renderKPBuild();
@@ -541,9 +543,10 @@ function renderHome(){
   return `
   <div class="header">
     <div class="logo">🏭</div>
-    <div style="flex:1"><div class="header-title">Завод Нева</div>
-    <div class="header-sub">${auth.name?esc(auth.name)+' · ':''} ${auth.source==='telegram'?'Telegram':'Браузер'}</div></div>
-    <button class="btn btn-secondary btn-sm" id="btn-logout" style="flex-shrink:0">Выйти</button>
+    <div style="flex:1">
+      <div class="header-title">Завод Нева</div>
+      <div class="header-sub">Калькулятор расчёта КП</div>
+    </div>
   </div>
   <div class="menu-item" id="menu-new-kp">
     <div class="menu-icon">📋</div>
@@ -580,26 +583,18 @@ function renderHome(){
 function renderKPStart(){
   const kp=state.kp;
   return `
-  <div class="nav"><button class="nav-back" id="back-home">← Назад</button><div class="nav-title">Новое КП</div></div>
+  <div class="nav"><button class="nav-back" id="back-home">← Назад</button>
+    <div class="nav-title">Данные клиента</div></div>
   <div class="card">
-    <div class="field"><label>Название объекта / клиент</label>
-      <input id="kp-name" placeholder="Напр: ООО Альфа, склад №3" value="${esc(kp.name)}"></div>
-    <div class="field"><label>Площадь (м²)</label>
-      <input id="kp-area" type="number" inputmode="decimal" placeholder="500" value="${kp.area}"></div>
+    <div class="field"><label>Клиент / название объекта</label>
+      <input id="kp-name" placeholder="Напр: ООО Альфа, Иванов И.И." value="${esc(kp.name)}"></div>
+    <div class="field"><label style="display:flex;justify-content:space-between">
+      <span>Доп. информация</span>
+      <span style="font-weight:400;color:var(--text3)">необязательно</span>
+    </label>
+    <textarea id="kp-info" rows="3" placeholder="Адрес объекта, контакты, особые условия...">${esc(kp.info||'')}</textarea></div>
   </div>
-  <div class="section-title">Способ формирования системы покрытия</div>
-  <div class="type-grid">
-    <div class="type-card" id="mode-scheme">
-      <div class="type-card-icon">🎨</div>
-      <div class="type-card-name">Готовая схема</div>
-      <div class="type-card-sub">Выбрать из списка</div>
-    </div>
-    <div class="type-card" id="mode-manual">
-      <div class="type-card-icon">🔧</div>
-      <div class="type-card-name">Вручную</div>
-      <div class="type-card-sub">Собрать слой за слоем</div>
-    </div>
-  </div>`;
+  <button class="btn btn-primary" id="btn-go-zones">Далее → добавить зоны</button>`;
 }
 
 function renderKPScheme(){
@@ -1390,8 +1385,15 @@ function bindEvents(){
     show('Вы вышли из системы');
   });
   on('menu-new-kp',()=>{
-    state.kp={name:'',area:'',layers:[],note:''};
+    state.kp={name:'',info:'',note:'',zones:[]};
+    state.currentZoneIdx=null;
     nav('kp_start');
+  });
+  on('btn-go-zones',()=>{
+    state.kp.name=document.getElementById('kp-name')?.value.trim()||'';
+    state.kp.info=document.getElementById('kp-info')?.value||'';
+    if(!state.kp.name){show('⚠️ Введите название клиента');return;}
+    nav('kp_zones');
   });
   on('menu-proposals',()=>nav('proposals'));
   on('menu-catalog',()=>nav('catalog'));
@@ -1474,20 +1476,7 @@ function bindEvents(){
   // KP START
   on('back-home',()=>nav('home'));
   on('back-proposals',()=>nav('proposals'));
-  on('mode-scheme',()=>{
-    const n=document.getElementById('kp-name')?.value.trim()||'';
-    const a=document.getElementById('kp-area')?.value||'';
-    if(!a||parseFloat(a)<=0){show('⚠️ Введите площадь');return}
-    state.kp.name=n;state.kp.area=a;
-    nav('kp_scheme');
-  });
-  on('mode-manual',()=>{
-    const n=document.getElementById('kp-name')?.value.trim()||'';
-    const a=document.getElementById('kp-area')?.value||'';
-    if(!a||parseFloat(a)<=0){show('⚠️ Введите площадь');return}
-    state.kp.name=n;state.kp.area=a;
-    nav('kp_build');
-  });
+  // mode-scheme/manual moved to zone handlers
 
   // KP SCHEME
   on('back-kp-start',()=>nav('kp_start'));
@@ -1624,7 +1613,7 @@ function bindEvents(){
 
   // KP RESULT
   on('back-kp-build',()=>nav('kp_build'));
-  on('new-kp',()=>{state.kp={name:'',area:'',layers:[],note:''};nav('kp_start')});
+  on('new-kp',()=>{state.kp={name:'',info:'',note:'',zones:[]};state.currentZoneIdx=null;nav('kp_start')});
   on('save-kp',()=>{
     const r=calcKP();
     const pr={id:genId(),name:state.kp.name||'Без названия',area:parseFloat(state.kp.area),
