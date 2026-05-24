@@ -314,6 +314,61 @@ function genId(){return Date.now().toString(36)+Math.random().toString(36).slice
 function currentZone(){return state.kp.zones[state.currentZoneIdx]||null}
 function newZone(name,area){return {id:genId(),name:name,area:area,layers:[]}}
 
+function exportData(){
+  const data = {
+    catalog: state.catalog,
+    schemes: state.schemes,
+    proposals: state.proposals,
+    exportedAt: new Date().toLocaleDateString('ru'),
+    version: 'zavod-neva-v1'
+  };
+  const json = JSON.stringify(data, null, 2);
+  const blob = new Blob([json], {type:'application/json'});
+  const reader = new FileReader();
+  reader.onloadend = function(){
+    const a = document.createElement('a');
+    a.href = reader.result;
+    a.download = 'zavod-neva-backup-'+Date.now().toString(36)+'.json';
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    show('📤 Данные экспортированы! Перенесите файл на другое устройство и импортируйте');
+  };
+  reader.readAsDataURL(blob);
+}
+
+function importData(event){
+  const file = event.target.files[0];
+  if(!file) return;
+  const reader = new FileReader();
+  reader.onload = function(e){
+    try {
+      const data = JSON.parse(e.target.result);
+      if(data.version !== 'zavod-neva-v1'){
+        show('❌ Неверный формат файла');
+        return;
+      }
+      if(data.catalog?.length) state.catalog = data.catalog;
+      if(data.schemes?.length) state.schemes = data.schemes;
+      if(data.proposals?.length){
+        // Мёрджим — добавляем только новые КП (по id)
+        const existingIds = new Set(state.proposals.map(p=>p.id));
+        const newProposals = data.proposals.filter(p=>!existingIds.has(p.id));
+        state.proposals = [...state.proposals, ...newProposals];
+      }
+      persist();
+      render();
+      show('✅ Импортировано: '+
+        (data.proposals?.length||0)+' КП, '+
+        (data.catalog?.length||0)+' материалов');
+    } catch(err){
+      show('❌ Ошибка чтения файла: '+err.message);
+    }
+    event.target.value = '';
+  };
+  reader.readAsText(file);
+}
+
 function handleGoZones(){
   const nm = document.getElementById('kp-name')?.value.trim() || '';
   if(!nm){ show('⚠️ Введите название клиента'); return; }
@@ -596,6 +651,15 @@ function renderHome(){
     <div class="menu-icon">🎨</div>
     <div class="menu-text"><div class="menu-title">Схемы покрытия</div><div class="menu-sub">${state.schemes.length} готовых схем</div></div>
     <div class="menu-arrow">›</div>
+  </div>
+  <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:8px">
+    <button class="btn btn-secondary" onclick="exportData()" style="font-size:12px;padding:10px">
+      📤 Экспорт данных
+    </button>
+    <label class="btn btn-secondary" style="font-size:12px;padding:10px;cursor:pointer">
+      📥 Импорт данных
+      <input type="file" accept=".json" id="import-file" style="display:none" onchange="importData(event)">
+    </label>
   </div>
   ${p.length>0?`
   <div class="divider"></div>
