@@ -1489,7 +1489,62 @@ function bindEvents(){
   });
 
   // KP BUILD
+  // KP START
+  on('btn-go-zones',()=>{
+    const nm=document.getElementById('kp-name')?.value.trim()||'';
+    if(!nm){show('⚠️ Введите название клиента');return;}
+    state.kp.name=nm;
+    state.kp.info=document.getElementById('kp-info')?.value||'';
+    nav('kp_zones');
+  });
+
+  // KP ZONES
+  on('btn-add-zone',()=>nav('kp_add_zone'));
+  on('go-kp-result',()=>{
+    state.kp.note=document.getElementById('kp-note')?.value||'';
+    state.expandedLayer=null;
+    nav('kp_result');
+  });
+  document.querySelectorAll('[data-edit-zone]').forEach(el=>{
+    el.addEventListener('click',e=>{
+      if(e.target.closest('[data-del-zone]')) return;
+      state.currentZoneIdx=parseInt(el.dataset.editZone);
+      state.expandedLayer=null;
+      nav('kp_build');
+    });
+  });
+  document.querySelectorAll('[data-del-zone]').forEach(el=>{
+    el.addEventListener('click',e=>{
+      e.stopPropagation();
+      if(confirm('Удалить зону?')){
+        state.kp.zones.splice(parseInt(el.dataset.delZone),1);
+        render();
+      }
+    });
+  });
+
+  // ADD ZONE
   on('back-kp-zones',()=>nav('kp_zones'));
+  on('zone-mode-manual',()=>{
+    const nm=document.getElementById('zone-name')?.value.trim()||'';
+    const ar=document.getElementById('zone-area')?.value||'';
+    if(!ar||parseFloat(ar)<=0){show('⚠️ Введите площадь');return;}
+    const z=newZone(nm||'Зона '+(state.kp.zones.length+1),ar);
+    state.kp.zones.push(z);
+    state.currentZoneIdx=state.kp.zones.length-1;
+    state.expandedLayer=null;
+    nav('kp_build');
+  });
+  on('zone-mode-scheme',()=>{
+    const nm=document.getElementById('zone-name')?.value.trim()||'';
+    const ar=document.getElementById('zone-area')?.value||'';
+    if(!ar||parseFloat(ar)<=0){show('⚠️ Введите площадь');return;}
+    const z=newZone(nm||'Зона '+(state.kp.zones.length+1),ar);
+    state.kp.zones.push(z);
+    state.currentZoneIdx=state.kp.zones.length-1;
+    state.expandedLayer=null;
+    nav('kp_scheme');
+  });
   on('edit-zone-info',()=>nav('kp_add_zone'));
   on('add-layer',()=>{state.addLayerCategory='primer';nav('kp_add_layer')});
   on('go-kp-result2',()=>{state.expandedLayer=null;nav('kp_zones');});
