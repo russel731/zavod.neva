@@ -428,7 +428,7 @@ function calcLayer(kpLayer, area){
 
 function calcZone(zone, includeThinners){
   const area=parseFloat(zone.area)||0;
-  const incTh = includeThinners !== false; // по умолчанию включено
+  const incTh = true; // разбавитель всегда включён — управляется как отдельный материал
   const layers=(zone.layers||[]).map(l=>calcLayer(l,area));
   const matCost=layers.reduce((s,l)=>s+l.costMat,0);
   const thinnerCostTotal=layers.reduce((s,l)=>s+l.thinnerCost,0);
@@ -442,7 +442,7 @@ function calcZone(zone, includeThinners){
 }
 function calcKP(){
   const kp=state.kp;
-  const incTh=kp.includeThinners!==false;
+  const incTh=true;
   const zones=(kp.zones||[]).map(z=>calcZone(z,incTh));
   const total=zones.reduce((s,z)=>s+z.total,0);
   const totalArea=zones.reduce((s,z)=>s+z.area,0);
@@ -507,24 +507,6 @@ function renderKPZones(){
     </div>`;
   }).join('')}
   <button class="btn btn-ghost" id="btn-add-zone" style="margin-bottom:12px">+ Добавить зону</button>
-
-  <!-- Опция разбавителя -->
-  <div class="card" style="margin-bottom:12px">
-    <div style="display:flex;align-items:center;justify-content:space-between">
-      <div>
-        <div style="font-weight:600;font-size:13px">💧 Включить разбавитель</div>
-        <div style="font-size:11px;color:var(--text3);margin-top:2px">
-          ${kp.includeThinners!==false?'Стоимость разбавителей учитывается в КП':'Разбавитель исключён из расчёта'}
-        </div>
-      </div>
-      <button onclick="state.kp.includeThinners=!(state.kp.includeThinners!==false);render()"
-        style="width:48px;height:28px;border-radius:14px;border:none;cursor:pointer;transition:.3s;
-          background:${kp.includeThinners!==false?'var(--success)':'var(--bg4)'};position:relative;flex-shrink:0">
-        <div style="width:22px;height:22px;border-radius:50%;background:#fff;position:absolute;top:3px;
-          transition:.3s;left:${kp.includeThinners!==false?'23px':'3px'}"></div>
-      </button>
-    </div>
-  </div>
 
   <div class="field" style="margin-bottom:12px">
     <label>Примечание к КП</label>
@@ -755,7 +737,7 @@ function renderKPBuild(){
             <input class="le-cons" data-li="${i}" type="number" inputmode="decimal" value="${cons}"></div>
         </div>
         <div class="field-row" style="margin-bottom:8px">
-          <div class="field" style="margin-bottom:0"><label>${cat==="thinner"&&cons===0?"Упаковок":"Слоёв"}</label>
+          <div class="field" style="margin-bottom:0"><label>Слоёв</label>
             <input class="le-layers" data-li="${i}" type="number" inputmode="numeric" min="1" value="${l.layers||1}"></div>
           <div class="field" style="margin-bottom:0">
             <label>${(l.customUnit||unit)==='l'?'Объём тары (л)':is2c?'Основа (кг/компл)':'Вес тары (кг)'}</label>
@@ -831,7 +813,7 @@ function renderAddLayer(){
 
 function renderKPResult(){
   const kp = state.kp;
-  const incTh = kp.includeThinners !== false;
+  const incTh = true;
   const vm = kp.viewMode || 'total'; // 'total' | 'zones'
   const r = calcKP();
 
@@ -904,7 +886,7 @@ function renderKPResult(){
       </div>
       <div style="background:var(--bg4);border-radius:8px;padding:8px;text-align:center">
         <div style="font-size:13px;font-weight:600;color:var(--text2)">${r.zones.length} зон</div>
-        <div style="font-size:11px;color:var(--text3);margin-top:2px">${incTh?'💧 с разбавителями':'без разбавителей'}</div>
+        <div style="font-size:11px;color:var(--text3);margin-top:2px">${r.zones.length} зон</div>
       </div>
     </div>
   </div>
@@ -1100,12 +1082,8 @@ function renderEditProduct(){
       <input id="ep-name" value="${esc(t.name)}" placeholder="Напр: Грунт ЭП-0199"></div>
     <div class="field"><label>Полное название (в КП и PDF)</label>
       <input id="ep-fullname" value="${esc(t.fullName||t.name||'')}" placeholder="Напр: Грунт эпоксидный ЭП-0199 однокомп."></div>
-    <div class="field-row">
-      <div class="field"><label>Цвет / марка</label>
-        <input id="ep-color" value="${esc(t.color)}" placeholder="RAL 7040"></div>
-      <div class="field"><label>Цена (${pLabel})</label>
+    <div class="field"><label>Цена (${pLabel})</label>
         <input id="ep-price" type="number" inputmode="decimal" value="${t.price||''}"></div>
-    </div>
     <div class="field"><label>Комментарий</label>
       <input id="ep-comment" value="${esc(t.comment||'')}"></div>
   </div>
@@ -1232,7 +1210,7 @@ function renderEditScheme(){
 /* ===== EXPORT PDF ===== */
 function exportPDF(kp, result){
   const r = result || calcKP();
-  const incTh = kp.includeThinners !== false;
+  const incTh = true;
   const d = new Date().toLocaleDateString('ru');
   const {jsPDF} = window.jspdf;
   const doc = new jsPDF({orientation:'portrait', unit:'mm', format:'a4'});
@@ -1406,14 +1384,30 @@ function exportPDF(kp, result){
   }
 
   const fname='КП_'+(kp.name||'ЗаводНева').replace(/\s+/g,'_')+'_'+d.replace(/\./g,'-')+'.pdf';
-  doc.save(fname);
 
-  // Уведомление о скачивании (для телефона)
-  const snk = document.getElementById('snack');
-  snk.innerHTML = '📥 PDF сохранён в папку «Загрузки»';
-  snk.classList.add('show');
-  clearTimeout(snk._t);
-  snk._t = setTimeout(()=>snk.classList.remove('show'), 4000);
+  // Telegram WebApp и мобильные браузеры: открываем PDF в новой вкладке
+  // Это позволяет пользователю сохранить через меню браузера
+  const pdfBlob = doc.output('blob');
+  const pdfUrl = URL.createObjectURL(pdfBlob);
+
+  // Пробуем открыть в новой вкладке
+  const newTab = window.open(pdfUrl, '_blank');
+
+  if(!newTab || newTab.closed || typeof newTab.closed === 'undefined'){
+    // Popup заблокирован — скачиваем через ссылку
+    const a = document.createElement('a');
+    a.href = pdfUrl;
+    a.download = fname;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    setTimeout(()=>URL.revokeObjectURL(pdfUrl), 5000);
+    show('📥 PDF скачивается...');
+  } else {
+    // Открылась вкладка — через 30 сек освобождаем URL
+    setTimeout(()=>URL.revokeObjectURL(pdfUrl), 30000);
+    show('📄 PDF открыт в новой вкладке — сохраните через меню браузера');
+  }
 }
 
 
@@ -1433,7 +1427,7 @@ function collectProduct(){
     category: cat, comp, unit,
     name:    v('ep-name'),
     fullName: v('ep-fullname') || v('ep-name'),
-    color:   v('ep-color'),
+    color:   '',
     price:   n('ep-price'),
     comment: v('ep-comment'),
     // Расход и тара
