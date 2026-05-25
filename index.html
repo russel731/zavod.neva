@@ -848,6 +848,16 @@ function renderAddLayer(){
     : state.catalog.filter(p=>p.category===selCat);
   return `
   <div class="nav"><button class="nav-back" id="back-kp-build">← Назад</button><div class="nav-title">Добавить материал</div></div>
+  <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:6px;margin-bottom:10px">
+    ${['primer','enamel','lacquer','primer_enamel','water_emulsion','thinner'].map(c=>`
+    <div class="type-card${selCat===c?' selected':''}" data-cat="${c}" style="padding:7px 4px">
+      <div class="type-card-icon" style="font-size:14px">${
+        c==='primer'?'🟡':c==='enamel'?'🔵':c==='lacquer'?'🟣':
+        c==='primer_enamel'?'🟠':c==='water_emulsion'?'🩵':'💧'
+      }</div>
+      <div class="type-card-name" style="font-size:10px;line-height:1.2">${catLabel(c)}</div>
+    </div>`).join('')}
+  </div>
   <div style="position:relative;margin-bottom:10px">
     <input id="layer-search" value="${esc(state.addLayerSearch||'')}"
       placeholder="🔍 Поиск по названию..."
@@ -859,16 +869,6 @@ function renderAddLayer(){
       style="position:absolute;right:10px;top:50%;transform:translateY(-50%);
         background:none;border:none;color:var(--text3);font-size:16px;cursor:pointer">✕</button>`:''}
   </div>
-  ${!search ? `<div style="display:grid;grid-template-columns:repeat(3,1fr);gap:6px;margin-bottom:14px">
-    ${['primer','enamel','lacquer','primer_enamel','water_emulsion','thinner'].map(c=>`
-    <div class="type-card${selCat===c?' selected':''}" data-cat="${c}" style="padding:7px 4px">
-      <div class="type-card-icon" style="font-size:14px">${
-        c==='primer'?'🟡':c==='enamel'?'🔵':c==='lacquer'?'🟣':
-        c==='primer_enamel'?'🟠':c==='water_emulsion'?'🩵':'💧'
-      }</div>
-      <div class="type-card-name" style="font-size:10px;line-height:1.2">${catLabel(c)}</div>
-    </div>`).join('')}
-  </div>` : ''}
   ${products.length===0?`<div class="empty"><div class="empty-icon">📦</div>Нет материалов в этой категории</div>`:''}
   ${products.map(p=>`
   <div class="mat-card" data-add-prod="${p.id}">
