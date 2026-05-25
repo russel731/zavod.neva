@@ -158,72 +158,75 @@ select option{background:var(--bg3)}
 <div class="snack" id="snack"></div>
 <script>
 /* ===== CONFIG ===== */
-const API_URL = (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1')
-  ? 'http://localhost:8000'
-  : 'https://YOUR_VPS_DOMAIN_OR_IP:8000'; // ← замените на адрес вашего сервера
+// ← ЗАМЕНИТЕ НА ВАШ БЕЛЫЙ IP, например: 'http://123.45.67.89:8000'
+const API_URL = 'http://185.113.37.28:8000';
 
 /* ===== TELEGRAM ===== */
 const tg = window.Telegram?.WebApp;
 if(tg){tg.ready();tg.expand();}
 
 /* ===== AUTH STATE ===== */
+// Простая авторизация: Telegram initData или PIN
 const auth = {
-  token: localStorage.getItem('zn_token') || null,
-  userId: localStorage.getItem('zn_user_id') || null,
-  name: localStorage.getItem('zn_name') || null,
-  source: localStorage.getItem('zn_source') || null,
+  pin:    localStorage.getItem('zn_pin') || null,
+  userId: localStorage.getItem('zn_uid') || null,
+  name:   localStorage.getItem('zn_name') || null,
 };
-function saveAuth(data){
-  auth.token = data.token; auth.userId = data.user_id;
-  auth.name = data.name; auth.source = data.source;
-  localStorage.setItem('zn_token', data.token);
-  localStorage.setItem('zn_user_id', data.user_id);
-  localStorage.setItem('zn_name', data.name || '');
-  localStorage.setItem('zn_source', data.source || '');
+function saveAuth(uid, name, pin){
+  auth.pin=pin; auth.userId=uid; auth.name=name;
+  if(pin) localStorage.setItem('zn_pin', pin);
+  localStorage.setItem('zn_uid', uid);
+  localStorage.setItem('zn_name', name||'');
 }
 function clearAuth(){
-  auth.token=null; auth.userId=null; auth.name=null; auth.source=null;
-  ['zn_token','zn_user_id','zn_name','zn_source'].forEach(k=>localStorage.removeItem(k));
+  auth.pin=null; auth.userId=null; auth.name=null;
+  ['zn_pin','zn_uid','zn_name'].forEach(k=>localStorage.removeItem(k));
 }
 
 /* ===== API HELPERS ===== */
 async function api(method, path, body){
-  const opts = {
-    method,
-    headers: {'Content-Type':'application/json', ...(auth.token?{'Authorization':'Bearer '+auth.token}:{})},
-  };
+  const headers = {'Content-Type':'application/json'};
+  if(tg?.initData) headers['X-TG-InitData'] = tg.initData;
+  if(auth.pin) headers['X-Pin'] = auth.pin;
+  const opts = {method, headers};
   if(body) opts.body = JSON.stringify(body);
-  const r = await fetch(API_URL + path, opts);
-  if(r.status === 401){ clearAuth(); render(); throw new Error('auth'); }
-  if(!r.ok){ const e=await r.json().catch(()=>({detail:'Ошибка сервера'})); throw new Error(e.detail||'Ошибка'); }
-  return r.json();
+  try {
+    const r = await fetch(API_URL + path, opts);
+    if(r.status === 401){ clearAuth(); render(); throw new Error('auth'); }
+    if(!r.ok) throw new Error('server error '+r.status);
+    return r.json();
+  } catch(e) {
+    if(e.message === 'auth') throw e;
+    console.warn('API unavailable:', e.message);
+    return null; // бэкенд недоступен — работаем offline
+  }
 }
 
 /* ===== SYNC ===== */
 let syncPending = false;
-async function syncPull(){
-  try{
-    const data = await api('GET','/sync/pull');
-    if(data.catalog?.length)  state.catalog  = data.catalog;
-    if(data.schemes?.length)  state.schemes  = data.schemes;
-    if(data.proposals?.length) state.proposals = data.proposals;
-    persist(); // сохраняем локально как кэш
-  } catch(e){ if(e.message!=='auth') console.warn('sync pull failed',e); }
+async function syncWithServer(){
+  // Один запрос: отправляем свои данные, получаем общие
+  const data = await api('POST', '/sync', {
+    catalog:   state.catalog,
+    schemes:   state.schemes,
+    proposals: state.proposals,
+  });
+  if(!data) return; // offline — работаем с localStorage
+  // Общие данные (каталог, схемы) — берём с сервера если там есть
+  if(data.catalog?.length)   state.catalog   = data.catalog;
+  if(data.schemes?.length)   state.schemes   = data.schemes;
+  if(data.proposals?.length) state.proposals = data.proposals;
+  if(data.user_id) { auth.userId = data.user_id; localStorage.setItem('zn_uid', data.user_id); }
+  persist();
 }
-async function syncPush(){
-  try{
-    await api('POST','/sync/push',{
-      catalog: state.catalog,
-      schemes: state.schemes,
-      proposals: state.proposals
-    });
-  } catch(e){ console.warn('sync push failed',e); }
-}
+// Оставляем для совместимости
+async function syncPull(){ return syncWithServer(); }
+async function syncPush(){ return syncWithServer(); }
 // Автосинк при изменениях
 const _origPersist = null;
 function persistAndSync(){
   persist();
-  if(auth.token) syncPush().catch(()=>{});
+  syncWithServer().catch(()=>{}); // синхронизируем с сервером
 }
 
 
@@ -510,18 +513,26 @@ function renderLogin(){
     <div class="logo" style="width:56px;height:56px;font-size:28px;margin-bottom:16px">🏭</div>
     <div style="font-size:20px;font-weight:700;margin-bottom:4px">Завод Нева</div>
     <div style="font-size:13px;color:var(--text3);margin-bottom:32px">Расчёт коммерческих предложений</div>
-    ${isTg?`
+    ${isTg ? `
     <button class="btn btn-primary" id="btn-tg-login" style="max-width:280px;margin-bottom:12px">
       ✈️ Войти через Telegram
-    </button>`:`
-    <div class="card" style="width:100%;max-width:320px">
-      <div class="field"><label>Логин</label><input id="login-user" placeholder="manager1" autocomplete="username"></div>
-      <div class="field"><label>Пароль</label><input id="login-pass" type="password" autocomplete="current-password"></div>
+    </button>` : `
+    <div class="card" style="width:100%;max-width:300px">
+      <div class="section-title">Вход</div>
+      <div class="field"><label>Ваше имя</label>
+        <input id="login-name" placeholder="Иван" autocomplete="name"></div>
+      <div class="field"><label>PIN-код</label>
+        <input id="login-pin" type="password" inputmode="numeric" maxlength="6"
+          placeholder="••••" autocomplete="off"></div>
       <div id="login-err" style="font-size:12px;color:var(--danger);margin-bottom:8px;display:none"></div>
-      <button class="btn btn-primary" id="btn-pass-login">Войти</button>
+      <button class="btn btn-primary" id="btn-pin-login">Войти</button>
     </div>`}
-    <div style="font-size:11px;color:var(--text3);margin-top:20px;text-align:center">
-      Данные синхронизируются между всеми вашими устройствами
+    <button class="btn btn-secondary" style="margin-top:16px;max-width:280px;font-size:12px"
+      onclick="state.screen='home';render()">
+      Работать без сервера (offline)
+    </button>
+    <div style="font-size:11px;color:var(--text3);margin-top:12px;text-align:center">
+      PIN-код выдаёт администратор
     </div>
   </div>`;
 }
@@ -1326,8 +1337,7 @@ function exportPDF(kp, result){
     doc.rect(ML, y, 3.5, 8, 'F');
     doc.setFontSize(10); doc.setTextColor(...NAVY); doc.setFont('Lib','bold');
     doc.text((zr.zone.name||('Зона '+(zi+1)))+' — '+zr.area+' м2', ML+6, y+5.5);
-    doc.setFontSize(9); doc.setFont('Lib','normal'); doc.setTextColor(44,78,150);
-    doc.text(fmtMoney(zr.total)+' руб.', W-MR, y+5.5, {align:'right'});
+    // сумма в заголовке зоны убрана
     y += 10;
 
     const tableRows = (zr.layers||[]).map(l=>{
@@ -1412,16 +1422,7 @@ function exportPDF(kp, result){
   doc.setFontSize(8); doc.setFont('Lib','normal'); doc.setTextColor(160,180,220);
   doc.text(fmtMoney(displayPerM2)+' руб./м2  ·  '+r.totalArea+' м2  ·  итого стоимость материалов', ML+5, y+17);
 
-  // Зоны справа
-  let yZ = y+7;
-  r.zones.forEach(zr=>{
-    const zn = (zr.zone.name||'Зона').substring(0,14);
-    doc.setFontSize(8); doc.setTextColor(208,224,255); doc.setFont('Lib','bold');
-    doc.text(zn+': '+fmtMoney(zr.total)+' руб.', W-MR-4, yZ, {align:'right'});
-    doc.setFont('Lib','normal'); doc.setTextColor(112,144,192);
-    doc.text(fmtMoney(zr.pricePerM2)+' руб./м2  ·  '+zr.area+' м2', W-MR-4, yZ+4, {align:'right'});
-    yZ += 9;
-  });
+  // правый блок с зонами убран — информация не дублируется
 
   // Нумерация страниц
   const pages = doc.internal.getNumberOfPages();
@@ -1433,13 +1434,23 @@ function exportPDF(kp, result){
     }
   }
 
-  // ── СКАЧИВАНИЕ — универсальное для всех платформ ────────────────────────────
+  // ── СКАЧИВАНИЕ ────────────────────────────────────────────────────────────
   const fname = 'KP_'+(kp.name||'ZavodNeva').replace(/\s+/g,'_')+'_'+d.replace(/\./g,'-')+'.pdf';
+  const pdfBase64 = doc.output('datauristring');
+  const pdfBlob = new Blob([doc.output('arraybuffer')], {type:'application/pdf'});
+  const blobUrl = URL.createObjectURL(pdfBlob);
 
-  // Получаем base64 строку напрямую из jsPDF (без Blob/FileReader)
-  const pdfBase64 = doc.output('datauristring'); // data:application/pdf;base64,...
+  // Telegram WebApp на Android — открываем через встроенный браузер
+  if(window.Telegram?.WebApp?.openLink){
+    // Открываем blob URL — Telegram откроет в браузере устройства
+    // где пользователь может сохранить/поделиться
+    window.Telegram.WebApp.openLink(blobUrl);
+    setTimeout(()=>URL.revokeObjectURL(blobUrl), 60000);
+    show('📄 PDF открыт в браузере — нажмите ⬇ или "Поделиться"');
+    return;
+  }
 
-  // Метод 1: прямая ссылка для скачивания (работает в браузере и Android)
+  // Обычный браузер — скачиваем напрямую
   const a = document.createElement('a');
   a.href = pdfBase64;
   a.download = fname;
@@ -1448,19 +1459,14 @@ function exportPDF(kp, result){
   a.click();
   document.body.removeChild(a);
 
-  // Метод 2: также открываем в новой вкладке (для iOS и Telegram)
-  // Небольшая задержка чтобы не конфликтовать с методом 1
+  // Дополнительно открываем в новой вкладке
   setTimeout(()=>{
-    const url = URL.createObjectURL(
-      new Blob([doc.output('arraybuffer')], {type:'application/pdf'})
-    );
-    // Пробуем открыть новую вкладку
-    const w = window.open(url, '_blank');
-    if(!w) URL.revokeObjectURL(url);
-    else setTimeout(()=>URL.revokeObjectURL(url), 30000);
-  }, 500);
+    const w = window.open(blobUrl, '_blank');
+    if(w) setTimeout(()=>URL.revokeObjectURL(blobUrl), 30000);
+    else URL.revokeObjectURL(blobUrl);
+  }, 300);
 
-  show('📄 PDF: ' + fname + ' — проверьте Загрузки или открылась новая вкладка');
+  show('📥 PDF сохранён: '+fname);
 }
 
 
@@ -1499,31 +1505,37 @@ function on(id,fn){const el=document.getElementById(id);if(el)el.addEventListene
 function bindEvents(){
   // LOGIN
   on('btn-tg-login', async ()=>{
-    try{
-      show('⏳ Авторизация...');
-      const data = await api('POST','/auth/telegram',{init_data: tg.initData});
-      saveAuth(data);
-      await syncPull();
-      nav('home');
-      show('✅ Добро пожаловать, '+data.name+'!');
-    } catch(e){ show('❌ '+e.message); }
+    show('⏳ Подключение...');
+    // Для Telegram: user_id берём из initDataUnsafe
+    const tgUser = tg?.initDataUnsafe?.user;
+    const uid = tgUser ? 'tg_'+tgUser.id : 'tg_unknown';
+    const name = tgUser ? (tgUser.first_name||'') : 'Пользователь';
+    saveAuth(uid, name, null);
+    await syncWithServer();
+    nav('home');
+    show('✅ Привет, '+name+'!');
   });
-  on('btn-pass-login', async ()=>{
-    const u=document.getElementById('login-user')?.value.trim();
-    const p=document.getElementById('login-pass')?.value;
-    if(!u||!p){show('⚠️ Заполните логин и пароль');return}
-    try{
-      show('⏳ Вход...');
-      const data = await api('POST','/auth/browser',{login:u,password:p});
-      saveAuth(data);
-      await syncPull();
+  on('btn-pin-login', async ()=>{
+    const name = document.getElementById('login-name')?.value.trim() || 'Менеджер';
+    const pin  = document.getElementById('login-pin')?.value.trim();
+    if(!pin){ show('⚠️ Введите PIN'); return; }
+    show('⏳ Проверка...');
+    // Проверяем PIN через сервер
+    const data = await api('POST', '/sync', {pin, username:name, catalog:[], schemes:[], proposals:[]});
+    if(!data){
+      // Сервер недоступен — пробуем offline с любым PIN
+      saveAuth('web_'+name, name, pin);
       nav('home');
-      show('✅ Добро пожаловать, '+data.name+'!');
-    } catch(e){
-      const errEl=document.getElementById('login-err');
-      if(errEl){errEl.textContent=e.message;errEl.style.display='block';}
-      show('❌ '+e.message);
+      show('⚠️ Сервер недоступен, работаем offline');
+      return;
     }
+    saveAuth('web_'+name, name, pin);
+    if(data.catalog?.length)   state.catalog   = data.catalog;
+    if(data.schemes?.length)   state.schemes   = data.schemes;
+    if(data.proposals?.length) state.proposals = data.proposals;
+    persist();
+    nav('home');
+    show('✅ Добро пожаловать, '+name+'!');
   });
 
   // HOME
