@@ -1154,13 +1154,13 @@ function renderEditProduct(){
       </div>`).join('')}
     </div>
 
-    <div class="section-title">Компонентность</div>
+    ${!isTh ? `<div class="section-title">Компонентность</div>
     <div class="type-grid" style="margin-bottom:12px">
       <div class="type-card${!is2c?' selected':''}" id="ecomp-1c">
         <div class="type-card-name">1К</div><div class="type-card-sub">Однокомп.</div></div>
       <div class="type-card${is2c?' selected':''}" id="ecomp-2c">
         <div class="type-card-name">2К</div><div class="type-card-sub">Двухкомп.</div></div>
-    </div>
+    </div>` : ''}
 
     <div class="section-title">Единица измерения</div>
     <div class="type-grid" style="margin-bottom:12px">
@@ -1186,21 +1186,26 @@ function renderEditProduct(){
       <input id="ep-comment" value="${esc(t.comment||'')}"></div>
   </div>
 
-  ${!isTh ? `
+  ${isTh ? `
+  <div class="card">
+    <div class="section-title">Тара</div>
+    <div class="field"><label>${isL ? 'Объём тары (л)' : 'Вес тары (кг)'}</label>
+      <input id="ep-cont" type="number" inputmode="decimal"
+        value="${isL ? (t.container||10) : (t.container||25)}"></div>
+  </div>` : `
   <div class="card">
     <div class="section-title">Расход и тара</div>
     <div class="field-row">
       <div class="field"><label>Расход 1 слой (${cLabel})</label>
         <input id="ep-cons" type="number" inputmode="decimal" value="${t.consumption||''}"></div>
       <div class="field"><label>${tLabel}</label>
-        <input id="ep-cont" type="number" inputmode="decimal" value="${isL ? (t.container||10) : (is2c ? (t.base||18) : (t.container||25))}"></div>
+        <input id="ep-cont" type="number" inputmode="decimal"
+          value="${isL ? (t.container||10) : (is2c ? (t.base||18) : (t.container||25))}"></div>
     </div>
     ${is2c ? `
     <div class="field"><label>Отвердитель (кг/компл)</label>
       <input id="ep-hard" type="number" inputmode="decimal" value="${t.hardener||3}"></div>` : ''}
-  </div>
-
-` : ''}
+  </div>`}
 
   <div class="btn-row">
     ${!isNew ? `<button class="btn btn-danger" id="del-product">🗑 Удалить</button>` : ''}
@@ -1527,7 +1532,8 @@ function generatePDFBase64(kp, result){
 function collectProduct(){
   const catEl = document.querySelector('[data-ecat].selected');
   const cat  = catEl?.dataset?.ecat || (state.editProduct?.category || 'primer');
-  const comp = document.querySelector('#ecomp-2c.selected') ? '2c' : '1c';
+  const isTh2 = cat === 'thinner';
+  const comp = isTh2 ? '1c' : (document.querySelector('#ecomp-2c.selected') ? '2c' : '1c');
   const unit = document.querySelector('#eunit-l.selected')  ? 'l'  : 'kg';
   const isL  = unit === 'l';
   const is2c = comp === '2c';
@@ -1543,8 +1549,8 @@ function collectProduct(){
     price:   n('ep-price'),
     comment: v('ep-comment'),
     // Расход и тара
-    consumption: n('ep-cons'),
-    container:   isL ? contVal : (is2c ? null  : contVal),
+    consumption: isTh2 ? 0 : n('ep-cons'),
+    container:   (isL || isTh2) ? contVal : (is2c ? null : contVal),
     base:        is2c && !isL  ? contVal : null,
     hardener:    is2c && !isL  ? n('ep-hard') : null,
     thinner_id:  null,
