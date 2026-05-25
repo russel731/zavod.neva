@@ -227,7 +227,7 @@ async function syncWithServer(){
     schemes:   state.schemes,
     proposals: state.proposals,
     pin:       auth.pin || undefined,
-    username:  auth.userId || DEVICE_ID,
+    username:  DEVICE_ID,
   });
   if(!data) return; // offline — работаем с localStorage
   // Общие данные (каталог, схемы) — берём с сервера если там есть
@@ -236,6 +236,7 @@ async function syncWithServer(){
   if(data.proposals?.length) state.proposals = data.proposals;
   if(data.user_id) { auth.userId = data.user_id; localStorage.setItem('zn_uid', data.user_id); }
   persist();
+  render(); // обновляем UI после синхронизации
 }
 // Оставляем для совместимости
 async function syncPull(){ return syncWithServer(); }
