@@ -202,17 +202,18 @@ async function api(method, path, body){
   };
   if(tg?.initData && tg.initData.length > 10) headers['X-TG-InitData'] = tg.initData;
   if(auth.pin && auth.pin !== 'null') headers['X-Pin'] = auth.pin;
-  const opts = {method, headers, mode: 'cors'};
+  const opts = {method, headers};
   if(body) opts.body = JSON.stringify(body);
-  // Добавляем ngrok bypass как query параметр
   try {
     const r = await fetch(API_URL + path, opts);
     if(r.status === 401){ clearAuth(); render(); throw new Error('auth'); }
     if(!r.ok) throw new Error('server error '+r.status);
-    return r.json();
+    const text = await r.text();
+    try { return JSON.parse(text); }
+    catch(je){ console.warn('JSON parse error:', text.slice(0,100)); return null; }
   } catch(e) {
     if(e.message === 'auth') throw e;
-    console.warn('API unavailable:', e.message);
+    console.warn('API error:', e.message);
     return null;
   }
 }
