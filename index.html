@@ -315,6 +315,7 @@ const state = {
   // UI state для построения КП
   addingLayer:false,
   addLayerCategory:'primer',
+  addLayerSearch:'',
 };
 
 function persist(){save({catalog:state.catalog,schemes:state.schemes,proposals:state.proposals})}
@@ -835,11 +836,30 @@ function renderKPBuild(){
 
 function renderAddLayer(){
   const cats=['primer','enamel','lacquer','thinner','custom'];
-  const selCat=state.addLayerCategory||'primer';
-  const products=state.catalog.filter(p=>p.category===selCat);
+  const selCat = state.addLayerCategory||'primer';
+  const search = (state.addLayerSearch||'').toLowerCase().trim();
+  // Если есть поиск — ищем по всем категориям, иначе по выбранной
+  const products = search
+    ? state.catalog.filter(p=>
+        (p.name||'').toLowerCase().includes(search) ||
+        (p.fullName||'').toLowerCase().includes(search) ||
+        catLabel(p.category).toLowerCase().includes(search)
+      )
+    : state.catalog.filter(p=>p.category===selCat);
   return `
   <div class="nav"><button class="nav-back" id="back-kp-build">← Назад</button><div class="nav-title">Добавить материал</div></div>
-  <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:6px;margin-bottom:14px">
+  <div style="position:relative;margin-bottom:10px">
+    <input id="layer-search" value="${esc(state.addLayerSearch||'')}"
+      placeholder="🔍 Поиск по названию..."
+      oninput="state.addLayerSearch=this.value;render()"
+      style="width:100%;padding:10px 36px 10px 12px;border-radius:10px;
+        border:1.5px solid ${search?'var(--accent)':'var(--border2)'};
+        background:var(--bg3);color:var(--text);font-size:14px;outline:none">
+    ${search?`<button onclick="state.addLayerSearch='';render()"
+      style="position:absolute;right:10px;top:50%;transform:translateY(-50%);
+        background:none;border:none;color:var(--text3);font-size:16px;cursor:pointer">✕</button>`:''}
+  </div>
+  ${!search ? `<div style="display:grid;grid-template-columns:repeat(3,1fr);gap:6px;margin-bottom:14px">
     ${['primer','enamel','lacquer','primer_enamel','water_emulsion','thinner'].map(c=>`
     <div class="type-card${selCat===c?' selected':''}" data-cat="${c}" style="padding:7px 4px">
       <div class="type-card-icon" style="font-size:14px">${
@@ -848,7 +868,7 @@ function renderAddLayer(){
       }</div>
       <div class="type-card-name" style="font-size:10px;line-height:1.2">${catLabel(c)}</div>
     </div>`).join('')}
-  </div>
+  </div>` : ''}
   ${products.length===0?`<div class="empty"><div class="empty-icon">📦</div>Нет материалов в этой категории</div>`:''}
   ${products.map(p=>`
   <div class="mat-card" data-add-prod="${p.id}">
@@ -1441,37 +1461,18 @@ function exportPDF(kp, result){
 
   // ── СКАЧИВАНИЕ ────────────────────────────────────────────────────────────
   const fname = 'KP_'+(kp.name||'ZavodNeva').replace(/\s+/g,'_')+'_'+d.replace(/\./g,'-')+'.pdf';
-  const pdfBase64 = doc.output('datauristring');
-  const pdfBlob = new Blob([doc.output('arraybuffer')], {type:'application/pdf'});
-  const blobUrl = URL.createObjectURL(pdfBlob);
+  // Используем только base64 data URI — работает везде включая Telegram WebApp
+  const pdfDataUri = doc.output('datauristring');
 
-  // Telegram WebApp на Android — открываем через встроенный браузер
-  if(window.Telegram?.WebApp?.openLink){
-    // Открываем blob URL — Telegram откроет в браузере устройства
-    // где пользователь может сохранить/поделиться
-    window.Telegram.WebApp.openLink(blobUrl);
-    setTimeout(()=>URL.revokeObjectURL(blobUrl), 60000);
-    show('📄 PDF открыт в браузере — нажмите ⬇ или "Поделиться"');
-    return;
-  }
-
-  // Обычный браузер — скачиваем напрямую
+  // Создаём скрытую ссылку для скачивания
   const a = document.createElement('a');
-  a.href = pdfBase64;
+  a.href = pdfDataUri;
   a.download = fname;
   a.style.display = 'none';
   document.body.appendChild(a);
   a.click();
   document.body.removeChild(a);
-
-  // Дополнительно открываем в новой вкладке
-  setTimeout(()=>{
-    const w = window.open(blobUrl, '_blank');
-    if(w) setTimeout(()=>URL.revokeObjectURL(blobUrl), 30000);
-    else URL.revokeObjectURL(blobUrl);
-  }, 300);
-
-  show('📥 PDF сохранён: '+fname);
+  show('📥 PDF: ' + fname);
 }
 
 
@@ -1783,6 +1784,7 @@ function bindEvents(){
     el.addEventListener('click',()=>{
       const z=currentZone();if(!z)return;
       z.layers.push({productId:el.dataset.addProd,layers:1,customName:null,customPrice:null,customConsumption:null,customComp:null});
+      state.addLayerSearch='';
       nav('kp_build');
       show('✅ Добавлено');
     });
