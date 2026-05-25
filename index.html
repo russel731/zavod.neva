@@ -167,9 +167,20 @@ if(tg){tg.ready();tg.expand();}
 
 /* ===== AUTH STATE ===== */
 // Простая авторизация: Telegram initData или PIN
+// Генерируем стабильный device ID при первом запуске
+function getDeviceId(){
+  let id = localStorage.getItem('zn_device_id');
+  if(!id){
+    id = 'dev_' + Date.now().toString(36) + Math.random().toString(36).slice(2,6);
+    localStorage.setItem('zn_device_id', id);
+  }
+  return id;
+}
+const DEVICE_ID = getDeviceId();
+
 const auth = {
   pin:    localStorage.getItem('zn_pin') || null,
-  userId: localStorage.getItem('zn_uid') || null,
+  userId: localStorage.getItem('zn_uid') || DEVICE_ID,
   name:   localStorage.getItem('zn_name') || null,
 };
 function saveAuth(uid, name, pin){
@@ -214,7 +225,7 @@ async function syncWithServer(){
     schemes:   state.schemes,
     proposals: state.proposals,
     pin:       auth.pin || undefined,
-    username:  auth.name || auth.userId || 'user',
+    username:  auth.userId || DEVICE_ID,
   });
   if(!data) return; // offline — работаем с localStorage
   // Общие данные (каталог, схемы) — берём с сервера если там есть
