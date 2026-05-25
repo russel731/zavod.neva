@@ -1013,10 +1013,7 @@ function renderKPResult(){
   <div class="btn-row" style="margin-top:14px">
     <button class="btn btn-secondary" id="save-kp">💾 Сохранить КП</button>
     <button class="btn btn-success" id="export-kp">📄 Скачать PDF</button>
-    ${tg?.initDataUnsafe?.user?.id ? `
-    <button class="btn btn-primary" id="send-pdf-tg" style="margin-top:6px">
-      ✈️ Получить PDF в Telegram
-    </button>` : ''}
+
   </div>
   <div style="margin-top:8px"><button class="btn btn-secondary" id="new-kp">+ Новое КП</button></div>`;
 }
@@ -1465,18 +1462,38 @@ function exportPDF(kp, result){
 
   // ── СКАЧИВАНИЕ ────────────────────────────────────────────────────────────
   const fname = 'KP_'+(kp.name||'ZavodNeva').replace(/\s+/g,'_')+'_'+d.replace(/\./g,'-')+'.pdf';
-  // Используем только base64 data URI — работает везде включая Telegram WebApp
-  const pdfDataUri = doc.output('datauristring');
+  const pdfBlob = new Blob([doc.output('arraybuffer')], {type:'application/pdf'});
+  const pdfFile = new File([pdfBlob], fname, {type:'application/pdf'});
 
-  // Создаём скрытую ссылку для скачивания
-  const a = document.createElement('a');
-  a.href = pdfDataUri;
-  a.download = fname;
-  a.style.display = 'none';
-  document.body.appendChild(a);
-  a.click();
-  document.body.removeChild(a);
-  show('📥 PDF: ' + fname);
+  // Пробуем нативное меню "Поделиться" (Android/iOS)
+  if(navigator.share && navigator.canShare && navigator.canShare({files:[pdfFile]})){
+    navigator.share({
+      title: 'КП — ' + (kp.name||'Завод Нева'),
+      text: 'Коммерческое предложение',
+      files: [pdfFile]
+    }).then(()=>{
+      show('✅ PDF отправлен!');
+    }).catch(e=>{
+      if(e.name !== 'AbortError') fallbackDownload();
+    });
+    return;
+  }
+
+  // Для браузеров без share API — обычное скачивание
+  fallbackDownload();
+
+  function fallbackDownload(){
+    const url = URL.createObjectURL(pdfBlob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = fname;
+    a.style.display = 'none';
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    setTimeout(()=>URL.revokeObjectURL(url), 3000);
+    show('📥 PDF сохранён: ' + fname);
+  }
 }
 
 
