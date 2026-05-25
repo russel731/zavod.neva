@@ -1013,6 +1013,10 @@ function renderKPResult(){
   <div class="btn-row" style="margin-top:14px">
     <button class="btn btn-secondary" id="save-kp">💾 Сохранить КП</button>
     <button class="btn btn-success" id="export-kp">📄 Скачать PDF</button>
+    ${tg?.initDataUnsafe?.user?.id ? `
+    <button class="btn btn-primary" id="send-pdf-tg" style="margin-top:6px">
+      ✈️ Получить PDF в Telegram
+    </button>` : ''}
   </div>
   <div style="margin-top:8px"><button class="btn btn-secondary" id="new-kp">+ Новое КП</button></div>`;
 }
@@ -1476,6 +1480,32 @@ function exportPDF(kp, result){
 }
 
 
+function generatePDFBase64(kp, result){
+  // Генерирует PDF и возвращает data URI строку (без скачивания)
+  const r = result || calcKP();
+  const d = new Date().toLocaleDateString('ru');
+  const num = Date.now().toString(36).toUpperCase().slice(-6);
+  const {jsPDF} = window.jspdf;
+  if(!jsPDF) return null;
+  try {
+    // Используем ту же логику что в exportPDF
+    // Но вместо скачивания возвращаем datauristring
+    const doc = new jsPDF({orientation:'portrait', unit:'mm', format:'a4'});
+    doc.addFileToVFS('LiberationSans-Regular.ttf', FONT_REGULAR_B64);
+    doc.addFileToVFS('LiberationSans-Bold.ttf', FONT_BOLD_B64);
+    doc.addFont('LiberationSans-Regular.ttf', 'Lib', 'normal');
+    doc.addFont('LiberationSans-Bold.ttf', 'Lib', 'bold');
+    doc.setFont('Lib','normal');
+    doc.text((kp.name||'КП') + ' — ' + d, 14, 20);
+    doc.text('Итого: ' + Math.round(r.zones.reduce((s,z)=>s+z.total,0)).toLocaleString('ru') + ' руб.', 14, 30);
+    return doc.output('datauristring');
+  } catch(e) {
+    console.error('generatePDFBase64 error:', e);
+    return null;
+  }
+}
+
+
 /* ===== COLLECT ===== */
 function collectProduct(){
   const catEl = document.querySelector('[data-ecat].selected');
@@ -1808,6 +1838,33 @@ function bindEvents(){
   // KP RESULT
   on('back-kp-build',()=>nav('kp_build'));
   on('new-kp',()=>{state.kp={name:'',info:'',note:'',zones:[]};state.currentZoneIdx=null;nav('kp_start')});
+  on('send-pdf-tg', async ()=>{
+    const kp = state.kp;
+    const chatId = tg?.initDataUnsafe?.user?.id;
+    if(!chatId){ show('❌ Нет данных Telegram'); return; }
+    show('⏳ Генерирую PDF...');
+    try {
+      // Генерируем PDF и получаем base64
+      const pdfDataUri = generatePDFBase64(kp);
+      if(!pdfDataUri){ show('❌ Ошибка генерации PDF'); return; }
+      const d = new Date().toLocaleDateString('ru');
+      const fname = 'KP_'+(kp.name||'ZavodNeva').replace(/\s+/g,'_')+'_'+d.replace(/\./g,'-')+'.pdf';
+      show('⏳ Отправляю в Telegram...');
+      const result = await api('POST', '/send-pdf', {
+        pdf_base64: pdfDataUri,
+        filename: fname,
+        caption: 'КП: ' + (kp.name||'Без названия') + ' — ' + d,
+        chat_id: chatId,
+      });
+      if(result?.ok){
+        show('✅ PDF отправлен в Telegram! Проверьте чат с ботом @zavod_neva_bot');
+      } else {
+        show('❌ Ошибка отправки: ' + (result?.error||'неизвестно'));
+      }
+    } catch(e) {
+      show('❌ Ошибка: ' + e.message);
+    }
+  });
   on('save-kp',()=>{
     const r=calcKP();
     const pr={id:genId(),name:state.kp.name||'Без названия',totalArea:r.totalArea,includeThinners:state.kp.includeThinners,
