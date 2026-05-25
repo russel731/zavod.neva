@@ -589,8 +589,8 @@ function renderAddZone(){
     </button>
     <button class="btn btn-primary" onclick="handleZoneMode('manual')"
       style="flex-direction:column;gap:6px;padding:20px 10px;height:auto">
-      <span style="font-size:26px">🔧</span>
-      <span style="font-size:13px;font-weight:600">Вручную</span>
+      <span style="font-size:26px">🪣</span>
+      <span style="font-size:13px;font-weight:600">Подбор</span>
       <span style="font-size:11px;font-weight:400;opacity:.8">Слой за слоем</span>
     </button>
   </div>`;
@@ -1258,6 +1258,11 @@ function renderEditScheme(){
 
 /* ===== EXPORT PDF ===== */
 function exportPDF(kp, result){
+  // Форматирование чисел для PDF — без toLocaleString (даёт неразрывные пробелы)
+  const fmtMoney = n => {
+    const s = Math.round(n||0).toString();
+    return s.replace(/\B(?=(\d{3})+(?!\d))/g, ' '); // пробел ASCII
+  };
   const r = result || calcKP();
   const d = new Date().toLocaleDateString('ru');
   const num = Date.now().toString(36).toUpperCase().slice(-6);
@@ -1322,7 +1327,7 @@ function exportPDF(kp, result){
     doc.setFontSize(10); doc.setTextColor(...NAVY); doc.setFont('Lib','bold');
     doc.text((zr.zone.name||('Зона '+(zi+1)))+' — '+zr.area+' м2', ML+6, y+5.5);
     doc.setFontSize(9); doc.setFont('Lib','normal'); doc.setTextColor(44,78,150);
-    doc.text(Math.round(zr.total).toLocaleString('ru')+' руб.', W-MR, y+5.5, {align:'right'});
+    doc.text(fmtMoney(zr.total)+' руб.', W-MR, y+5.5, {align:'right'});
     y += 10;
 
     const tableRows = (zr.layers||[]).map(l=>{
@@ -1337,17 +1342,16 @@ function exportPDF(kp, result){
       // Фактический вес/объём
       const totalAmt = fmtN(l.actualAmt,1)+' '+(l.unit==='l'?'л':'кг');
       const ppu = l.actualAmt>0
-        ? Math.round(lineCost/l.actualAmt).toLocaleString('ru')+' '+(l.unit==='l'?'руб./л':'руб./кг')
+        ? fmtMoney(lineCost/l.actualAmt)+' '+(l.unit==='l'?'руб./л':'руб./кг')
         : '—';
+      const catStr = catLabel(l.kpLayer?.category||l.prod?.category||'custom');
       return [
-        catLabel(l.kpLayer?.category||l.prod?.category||'custom'),
-        l.fullName||l.name,
+        '['+catStr+'] '+(l.fullName||l.name),
         String(l.layerCount),
-        l.cons+' '+l.consLabel,
         qty,
         totalAmt,
         ppu,
-        Math.round(lineCost).toLocaleString('ru')+' руб.'
+        fmtMoney(lineCost)+' руб.'
       ];
     });
 
@@ -1360,14 +1364,14 @@ function exportPDF(kp, result){
     if(zoneL>0) zoneAmt += fmtN(zoneL,1)+' л';
 
     tableRows.push([
-      'Итого стоимость · '+Math.round(zr.pricePerM2).toLocaleString('ru')+' руб./м2',
-      '','','','', zoneAmt, '',
-      Math.round(zr.total).toLocaleString('ru')+' руб.'
+      'Итого стоимость · '+fmtMoney(zr.pricePerM2)+' руб./м2',
+      '', '', zoneAmt, '',
+      fmtMoney(zr.total)+' руб.'
     ]);
 
     doc.autoTable({
       startY: y,
-      head:[['Кат.','Материал','Сл.','Расход','Кол-во x тара','Вес/объём','Цена/ед.','Сумма']],
+      head:[['Материал','Сл.','Кол-во x тара','Вес/объём','Цена/ед.','Сумма']],
       body: tableRows,
       theme:'striped',
       tableWidth: CW,
@@ -1376,14 +1380,12 @@ function exportPDF(kp, result){
       bodyStyles:{fontSize:7.5, font:'Lib', cellPadding:2.5, textColor:[30,30,50]},
       alternateRowStyles:{fillColor:[246,248,254]},
       columnStyles:{
-        0:{cellWidth:14},
-        1:{cellWidth:'auto'},
-        2:{cellWidth:7, halign:'center'},
-        3:{cellWidth:16, halign:'center'},
-        4:{cellWidth:26},
-        5:{cellWidth:16, halign:'center'},
-        6:{cellWidth:20, halign:'right'},
-        7:{cellWidth:22, halign:'right'}
+        0:{cellWidth:'auto'},
+        1:{cellWidth:8, halign:'center'},
+        2:{cellWidth:30},
+        3:{cellWidth:18, halign:'center'},
+        4:{cellWidth:22, halign:'right'},
+        5:{cellWidth:24, halign:'right'}
       },
       didParseCell(data){
         const isLast = data.row.index === tableRows.length-1;
@@ -1406,18 +1408,18 @@ function exportPDF(kp, result){
 
   // Большая сумма слева
   doc.setFontSize(22); doc.setTextColor(255,255,255); doc.setFont('Lib','bold');
-  doc.text(Math.round(displayTotal).toLocaleString('ru')+' руб.', ML+5, y+12);
+  doc.text(fmtMoney(displayTotal)+' руб.', ML+5, y+12);
   doc.setFontSize(8); doc.setFont('Lib','normal'); doc.setTextColor(160,180,220);
-  doc.text(displayPerM2.toLocaleString('ru')+' руб./м2  ·  '+r.totalArea+' м2  ·  итого стоимость материалов', ML+5, y+17);
+  doc.text(fmtMoney(displayPerM2)+' руб./м2  ·  '+r.totalArea+' м2  ·  итого стоимость материалов', ML+5, y+17);
 
   // Зоны справа
   let yZ = y+7;
   r.zones.forEach(zr=>{
     const zn = (zr.zone.name||'Зона').substring(0,14);
     doc.setFontSize(8); doc.setTextColor(208,224,255); doc.setFont('Lib','bold');
-    doc.text(zn+': '+Math.round(zr.total).toLocaleString('ru')+' руб.', W-MR-4, yZ, {align:'right'});
+    doc.text(zn+': '+fmtMoney(zr.total)+' руб.', W-MR-4, yZ, {align:'right'});
     doc.setFont('Lib','normal'); doc.setTextColor(112,144,192);
-    doc.text(Math.round(zr.pricePerM2).toLocaleString('ru')+' руб./м2  ·  '+zr.area+' м2', W-MR-4, yZ+4, {align:'right'});
+    doc.text(fmtMoney(zr.pricePerM2)+' руб./м2  ·  '+zr.area+' м2', W-MR-4, yZ+4, {align:'right'});
     yZ += 9;
   });
 
@@ -1431,30 +1433,34 @@ function exportPDF(kp, result){
     }
   }
 
-  // ── СКАЧИВАНИЕ — работает на Android/iOS/Desktop ──────────────────────────
+  // ── СКАЧИВАНИЕ — универсальное для всех платформ ────────────────────────────
   const fname = 'KP_'+(kp.name||'ZavodNeva').replace(/\s+/g,'_')+'_'+d.replace(/\./g,'-')+'.pdf';
-  const pdfBlob = doc.output('blob');
 
-  // Используем FileReader для максимальной совместимости с мобильными
-  const reader = new FileReader();
-  reader.onloadend = function(){
-    const base64 = reader.result; // data:application/pdf;base64,...
-    const a = document.createElement('a');
-    a.href = base64;
-    a.download = fname;
-    a.style.display = 'none';
-    document.body.appendChild(a);
-    a.click();
-    setTimeout(()=>{ document.body.removeChild(a); }, 300);
+  // Получаем base64 строку напрямую из jsPDF (без Blob/FileReader)
+  const pdfBase64 = doc.output('datauristring'); // data:application/pdf;base64,...
 
-    // Уведомление
-    const snk = document.getElementById('snack');
-    snk.textContent = '📥 PDF готов: '+fname;
-    snk.classList.add('show');
-    clearTimeout(snk._t);
-    snk._t = setTimeout(()=>snk.classList.remove('show'), 5000);
-  };
-  reader.readAsDataURL(pdfBlob);
+  // Метод 1: прямая ссылка для скачивания (работает в браузере и Android)
+  const a = document.createElement('a');
+  a.href = pdfBase64;
+  a.download = fname;
+  a.style.display = 'none';
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+
+  // Метод 2: также открываем в новой вкладке (для iOS и Telegram)
+  // Небольшая задержка чтобы не конфликтовать с методом 1
+  setTimeout(()=>{
+    const url = URL.createObjectURL(
+      new Blob([doc.output('arraybuffer')], {type:'application/pdf'})
+    );
+    // Пробуем открыть новую вкладку
+    const w = window.open(url, '_blank');
+    if(!w) URL.revokeObjectURL(url);
+    else setTimeout(()=>URL.revokeObjectURL(url), 30000);
+  }, 500);
+
+  show('📄 PDF: ' + fname + ' — проверьте Загрузки или открылась новая вкладка');
 }
 
 
