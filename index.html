@@ -220,7 +220,7 @@ async function api(method, path, body){
 
 /* ===== SYNC ===== */
 let syncPending = false;
-async function syncWithServer(){
+async function syncWithServer(doRender){
   // Один запрос: отправляем свои данные, получаем общие
   const data = await api('POST', '/sync', {
     catalog:   state.catalog,
@@ -236,19 +236,17 @@ async function syncWithServer(){
   if(data.proposals?.length) state.proposals = data.proposals;
   if(data.user_id) { auth.userId = data.user_id; localStorage.setItem('zn_uid', data.user_id); }
   persist();
-  // render() вызывается только если мы на главном экране (не во время редактирования)
-  if(state.screen === 'home' || state.screen === 'catalog' || state.screen === 'proposals') {
-    render();
-  }
+  // render() только если явно запрошен
+  if(doRender) render();
 }
 // Оставляем для совместимости
-async function syncPull(){ return syncWithServer(); }
-async function syncPush(){ return syncWithServer(); }
+async function syncPull(){ return syncWithServer(true); }
+async function syncPush(){ return syncWithServer(false); }
 // Автосинк при изменениях
 const _origPersist = null;
 function persistAndSync(){
   persist();
-  syncWithServer().catch(()=>{}); // синхронизируем с сервером
+  syncWithServer(false).catch(()=>{}); // синхронизируем без перерисовки
 }
 
 
@@ -1592,7 +1590,7 @@ function bindEvents(){
     const uid = tgUser ? 'tg_'+tgUser.id : 'tg_unknown';
     const name = tgUser ? (tgUser.first_name||'') : 'Пользователь';
     saveAuth(uid, name, null);
-    await syncWithServer();
+    await syncWithServer(false);
     nav('home');
     show('✅ Привет, '+name+'!');
   });
@@ -1986,7 +1984,7 @@ function bindEvents(){
       show('✅ Сохранено');
       nav('catalog');
       // Синхронизируем после навигации (render уже вызван nav'ом)
-      setTimeout(()=>syncWithServer().catch(e=>console.warn('sync error:',e)), 100);
+      setTimeout(()=>syncWithServer(false).catch(e=>console.warn('sync error:',e)), 500);
     } catch(e) {
       show('❌ Ошибка: '+e.message);
       console.error('save-product error:', e);
