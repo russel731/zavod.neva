@@ -223,16 +223,17 @@ let syncPending = false;
 async function syncWithServer(doRender){
   // Один запрос: отправляем свои данные, получаем общие
   const data = await api('POST', '/sync', {
-    catalog:   state.catalog,
-    schemes:   state.schemes,
+    // Отправляем каталог только если он изменён локально
+    catalog:   catalogDirty ? state.catalog : [],
+    schemes:   catalogDirty ? state.schemes : [],
     proposals: state.proposals,
     pin:       auth.pin || undefined,
     username:  DEVICE_ID,
   });
   if(!data) return; // offline — работаем с localStorage
   // Общие данные (каталог, схемы) — берём с сервера если там есть
-  if(data.catalog?.length)   state.catalog   = data.catalog;
-  if(data.schemes?.length)   state.schemes   = data.schemes;
+  if(data.catalog?.length)   { state.catalog   = data.catalog; catalogDirty = false; }
+  if(data.schemes?.length)   { state.schemes   = data.schemes; }
   if(data.proposals?.length) state.proposals = data.proposals;
   if(data.user_id) { auth.userId = data.user_id; localStorage.setItem('zn_uid', data.user_id); }
   persist();
@@ -334,6 +335,7 @@ const state = {
 };
 
 function persist(){save({catalog:state.catalog,schemes:state.schemes,proposals:state.proposals})}
+let catalogDirty = false; // флаг что каталог изменён локально
 function genId(){return Date.now().toString(36)+Math.random().toString(36).slice(2,5)}
 function currentZone(){return state.kp.zones[state.currentZoneIdx]||null}
 function newZone(name,area){return {id:genId(),name:name,area:area,layers:[]}}
@@ -1548,6 +1550,7 @@ function saveProduct(){
   try {
     const t = collectProduct();
     if(!t.name){ show('⚠️ Введите название'); return; }
+    catalogDirty = true; // помечаем что каталог изменён
     if(state.editProduct && state.editProduct.id && state.editProduct.id !== 'new'){
       const idx = state.catalog.findIndex(x => x.id === state.editProduct.id);
       if(idx >= 0) state.catalog[idx] = {...state.editProduct, ...t};
@@ -1569,6 +1572,7 @@ function saveProduct(){
 
 function deleteProduct(){
   if(!confirm('Удалить материал?')) return;
+  catalogDirty = true;
   state.catalog = state.catalog.filter(p => p.id !== state.editProduct?.id);
   persist();
   show('🗑 Удалён');
@@ -1988,7 +1992,7 @@ function bindEvents(){
   document.querySelectorAll('[data-del-prod]').forEach(el=>{
     el.addEventListener('click',e=>{
       e.stopPropagation();
-      if(confirm('Удалить?')){state.catalog=state.catalog.filter(p=>p.id!==el.dataset.delProd);persist();show('🗑 Удалён');render()}
+      if(confirm('Удалить?')){catalogDirty=true;state.catalog=state.catalog.filter(p=>p.id!==el.dataset.delProd);persist();show('🗑 Удалён');render()}
     });
   });
 
