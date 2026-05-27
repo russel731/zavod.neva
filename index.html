@@ -1223,8 +1223,8 @@ function renderEditProduct(){
   </div>`}
 
   <div class="btn-row">
-    ${!isNew ? `<button class="btn btn-danger" onclick="deleteProduct()">🗑 Удалить</button>` : ''}
-    <button class="btn btn-primary" onclick="saveProduct()">💾 Сохранить</button>
+    ${!isNew ? `<button class="btn btn-danger" id="del-product">🗑 Удалить</button>` : ''}
+    <button class="btn btn-primary" id="save-product">💾 Сохранить</button>
   </div>`;
 }
 
@@ -2004,7 +2004,11 @@ function bindEvents(){
   on('ecomp-2c',()=>{if(!state.editProduct)state.editProduct={};state.editProduct.comp='2c';render()});
   on('eunit-kg',()=>{if(!state.editProduct)state.editProduct={};state.editProduct.unit='kg';render()});
   on('eunit-l', ()=>{if(!state.editProduct)state.editProduct={};state.editProduct.unit='l';render()});
-  // save-product and del-product handled via onclick (saveProduct/deleteProduct)
+  // save-product and del-product
+  const spBtn = document.getElementById('save-product');
+  if(spBtn) spBtn.addEventListener('click', saveProduct);
+  const dpBtn = document.getElementById('del-product');
+  if(dpBtn) dpBtn.addEventListener('click', deleteProduct);
 
   }
 
