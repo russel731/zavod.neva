@@ -236,7 +236,10 @@ async function syncWithServer(){
   if(data.proposals?.length) state.proposals = data.proposals;
   if(data.user_id) { auth.userId = data.user_id; localStorage.setItem('zn_uid', data.user_id); }
   persist();
-  render(); // обновляем UI после синхронизации
+  // render() вызывается только если мы на главном экране (не во время редактирования)
+  if(state.screen === 'home' || state.screen === 'catalog' || state.screen === 'proposals') {
+    render();
+  }
 }
 // Оставляем для совместимости
 async function syncPull(){ return syncWithServer(); }
@@ -1982,7 +1985,8 @@ function bindEvents(){
       persist();
       show('✅ Сохранено');
       nav('catalog');
-      syncWithServer().catch(e=>console.warn('sync error:',e));
+      // Синхронизируем после навигации (render уже вызван nav'ом)
+      setTimeout(()=>syncWithServer().catch(e=>console.warn('sync error:',e)), 100);
     } catch(e) {
       show('❌ Ошибка: '+e.message);
       console.error('save-product error:', e);
