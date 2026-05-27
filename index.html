@@ -1223,8 +1223,8 @@ function renderEditProduct(){
   </div>`}
 
   <div class="btn-row">
-    ${!isNew ? `<button class="btn btn-danger" id="del-product">🗑 Удалить</button>` : ''}
-    <button class="btn btn-primary" id="save-product">💾 Сохранить</button>
+    ${!isNew ? `<button class="btn btn-danger" onclick="deleteProduct()">🗑 Удалить</button>` : ''}
+    <button class="btn btn-primary" onclick="saveProduct()">💾 Сохранить</button>
   </div>`;
 }
 
@@ -1542,6 +1542,41 @@ function generatePDFBase64(kp, result){
   }
 }
 
+
+/* ===== PRODUCT ACTIONS ===== */
+function saveProduct(){
+  try {
+    const t = collectProduct();
+    if(!t.name){ show('⚠️ Введите название'); return; }
+    if(state.editProduct && state.editProduct.id && state.editProduct.id !== 'new'){
+      const idx = state.catalog.findIndex(x => x.id === state.editProduct.id);
+      if(idx >= 0) state.catalog[idx] = {...state.editProduct, ...t};
+      else state.catalog.push({...t, id: state.editProduct.id});
+    } else {
+      state.catalog.push({...t, id: genId()});
+    }
+    persist();
+    show('✅ Сохранено');
+    state.editProduct = null;
+    state.screen = 'catalog';
+    render();
+    syncWithServer(false).catch(e => console.warn('sync error:', e));
+  } catch(e) {
+    show('❌ Ошибка: ' + e.message);
+    console.error('saveProduct error:', e);
+  }
+}
+
+function deleteProduct(){
+  if(!confirm('Удалить материал?')) return;
+  state.catalog = state.catalog.filter(p => p.id !== state.editProduct?.id);
+  persist();
+  show('🗑 Удалён');
+  state.editProduct = null;
+  state.screen = 'catalog';
+  render();
+  syncWithServer(false).catch(()=>{});
+}
 
 /* ===== COLLECT ===== */
 function collectProduct(){
@@ -1969,33 +2004,7 @@ function bindEvents(){
   on('ecomp-2c',()=>{if(!state.editProduct)state.editProduct={};state.editProduct.comp='2c';render()});
   on('eunit-kg',()=>{if(!state.editProduct)state.editProduct={};state.editProduct.unit='kg';render()});
   on('eunit-l', ()=>{if(!state.editProduct)state.editProduct={};state.editProduct.unit='l';render()});
-  on('save-product',()=>{
-    try {
-      const t=collectProduct();
-      if(!t.name){show('⚠️ Введите название');return}
-      if(state.editProduct&&state.editProduct.id&&state.editProduct.id!=='new'){
-        const idx=state.catalog.findIndex(x=>x.id===state.editProduct.id);
-        if(idx>=0)state.catalog[idx]={...state.editProduct,...t};
-        else state.catalog.push({...t,id:state.editProduct.id});
-      } else {
-        state.catalog.push({...t,id:genId()});
-      }
-      persist();
-      show('✅ Сохранено');
-      nav('catalog');
-      // Синхронизируем после навигации (render уже вызван nav'ом)
-      setTimeout(()=>syncWithServer(false).catch(e=>console.warn('sync error:',e)), 500);
-    } catch(e) {
-      show('❌ Ошибка: '+e.message);
-      console.error('save-product error:', e);
-    }
-  });
-  on('del-product',()=>{
-    if(confirm('Удалить материал?')){
-      state.catalog=state.catalog.filter(p=>p.id!==state.editProduct.id);
-      persistAndSync();show('🗑 Удалён');nav('catalog');
-    }
-  });
+  // save-product and del-product handled via onclick (saveProduct/deleteProduct)
 
   }
 
