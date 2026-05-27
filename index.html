@@ -1544,6 +1544,7 @@ function generatePDFBase64(kp, result){
 
 /* ===== COLLECT ===== */
 function collectProduct(){
+  try {
   const catEl = document.querySelector('[data-ecat].selected');
   const cat  = catEl?.dataset?.ecat || (state.editProduct?.category || 'primer');
   const isTh2 = cat === 'thinner';
@@ -1570,6 +1571,10 @@ function collectProduct(){
     thinner_id:  null,
     thinnerPct:  0,
   };
+  } catch(e) {
+    console.error('collectProduct error:', e);
+    return {name:'', category:'primer', comp:'1c', unit:'kg', price:0, consumption:0};
+  }
 }
 
 /* ===== EVENTS ===== */
@@ -1964,15 +1969,24 @@ function bindEvents(){
   on('eunit-kg',()=>{if(!state.editProduct)state.editProduct={};state.editProduct.unit='kg';render()});
   on('eunit-l', ()=>{if(!state.editProduct)state.editProduct={};state.editProduct.unit='l';render()});
   on('save-product',()=>{
-    const t=collectProduct();
-    if(!t.name){show('⚠️ Введите название');return}
-    if(state.editProduct&&state.editProduct.id&&state.editProduct.id!=='new'){
-      const idx=state.catalog.findIndex(x=>x.id===state.editProduct.id);
-      if(idx>=0)state.catalog[idx]={...state.editProduct,...t};
-    } else {
-      state.catalog.push({...t,id:genId()});
+    try {
+      const t=collectProduct();
+      if(!t.name){show('⚠️ Введите название');return}
+      if(state.editProduct&&state.editProduct.id&&state.editProduct.id!=='new'){
+        const idx=state.catalog.findIndex(x=>x.id===state.editProduct.id);
+        if(idx>=0)state.catalog[idx]={...state.editProduct,...t};
+        else state.catalog.push({...t,id:state.editProduct.id});
+      } else {
+        state.catalog.push({...t,id:genId()});
+      }
+      persist();
+      show('✅ Сохранено');
+      nav('catalog');
+      syncWithServer().catch(e=>console.warn('sync error:',e));
+    } catch(e) {
+      show('❌ Ошибка: '+e.message);
+      console.error('save-product error:', e);
     }
-    persistAndSync();show('✅ Сохранено');nav('catalog');
   });
   on('del-product',()=>{
     if(confirm('Удалить материал?')){
