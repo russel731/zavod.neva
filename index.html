@@ -225,7 +225,7 @@ async function syncWithServer(doRender){
   const data = await api('POST', '/sync', {
     // Отправляем каталог только если он изменён локально
     catalog:   catalogDirty ? state.catalog : [],
-    schemes:   catalogDirty ? state.schemes : [],
+    schemes:   schemeDirty ? state.schemes : [],
     proposals: state.proposals,
     pin:       auth.pin || undefined,
     username:  DEVICE_ID,
@@ -233,7 +233,7 @@ async function syncWithServer(doRender){
   if(!data) return; // offline — работаем с localStorage
   // Общие данные (каталог, схемы) — берём с сервера если там есть
   if(data.catalog?.length)   { state.catalog   = data.catalog; catalogDirty = false; }
-  if(data.schemes?.length)   { state.schemes   = data.schemes; }
+  if(data.schemes?.length)   { state.schemes   = data.schemes; schemeDirty = false; }
   if(data.proposals?.length) state.proposals = data.proposals;
   if(data.user_id) { auth.userId = data.user_id; localStorage.setItem('zn_uid', data.user_id); }
   persist();
@@ -336,6 +336,7 @@ const state = {
 
 function persist(){save({catalog:state.catalog,schemes:state.schemes,proposals:state.proposals})}
 let catalogDirty = false; // флаг что каталог изменён локально
+let schemeDirty = false; // флаг что схемы изменены локально
 function genId(){return Date.now().toString(36)+Math.random().toString(36).slice(2,5)}
 function currentZone(){return state.kp.zones[state.currentZoneIdx]||null}
 function newZone(name,area){return {id:genId(),name:name,area:area,layers:[]}}
@@ -442,7 +443,7 @@ function calcLayer(kpLayer, area){
   const cons   = kpLayer.customConsumption  != null ? kpLayer.customConsumption  : (prod?.consumption||0);
   const comp   = kpLayer.customComp  || prod?.comp  || '1c';
   const unit   = kpLayer.customUnit  || prod?.unit  || 'kg'; // 'kg' | 'l'
-  const layerCount = kpLayer.layers || 1;
+  const layerCount = parseFloat(kpLayer.layers) || 1;
   const name     = kpLayer.customName || prod?.name || 'Позиция';
   const fullName = kpLayer.customFullName || prod?.fullName || name;
   const category = kpLayer.category  || prod?.category || 'custom';
@@ -686,6 +687,9 @@ function renderHome(){
     <div class="menu-text"><div class="menu-title">Схемы покрытия</div><div class="menu-sub">${state.schemes.length} готовых схем</div></div>
     <div class="menu-arrow">›</div>
   </div>
+  <button class="btn btn-secondary" id="btn-sync-now" style="margin-bottom:8px;font-size:13px">
+    🔄 Синхронизировать каталог
+  </button>
   <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:8px">
     <button class="btn btn-secondary" onclick="exportData()" style="font-size:12px;padding:10px">
       📤 Экспорт данных
@@ -833,7 +837,7 @@ function renderKPBuild(){
         </div>
         <div class="field-row" style="margin-bottom:8px">
           <div class="field" style="margin-bottom:0"><label>Слоёв</label>
-            <input class="le-layers" data-li="${i}" type="number" inputmode="numeric" min="1" value="${l.layers||1}"></div>
+            <input class="le-layers" data-li="${i}" type="number" inputmode="decimal" min="0.5" step="0.5" value="${l.layers||1}"></div>
           <div class="field" style="margin-bottom:0">
             <label>${(l.customUnit||unit)==='l'?'Объём тары (л)':is2c?'Основа (кг/компл)':'Вес тары (кг)'}</label>
             <input class="le-container" data-li="${i}" type="number" inputmode="decimal"
@@ -1029,9 +1033,9 @@ function renderKPResult(){
   ${kp.note ? '<div class="alert alert-warn" style="margin-top:8px">📝 '+esc(kp.note)+'</div>' : ''}
   <div class="btn-row" style="margin-top:14px">
     <button class="btn btn-secondary" id="save-kp">💾 Сохранить КП</button>
-    <button class="btn btn-success" id="export-kp">📄 Скачать PDF</button>
-
+    <button class="btn btn-success" id="export-kp">📄 PDF</button>
   </div>
+  ${tg?.initData ? `<button class="btn btn-secondary" id="send-pdf-tg" style="margin-top:8px">✈️ Отправить PDF в Telegram</button>` : ''}
   <div style="margin-top:8px"><button class="btn btn-secondary" id="new-kp">+ Новое КП</button></div>`;
 }
 
@@ -1288,7 +1292,7 @@ function renderEditScheme(){
       </div>
       <div style="display:flex;align-items:center;gap:8px;margin-top:6px">
         <label style="font-size:12px;color:var(--text2);margin-bottom:0">Слоёв:</label>
-        <input type="number" min="1" value="${l.layers||1}" data-sl-layers="${li}"
+        <input type="number" min="0.5" step="0.5" value="${l.layers||1}" data-sl-layers="${li}"
           style="width:70px;padding:4px 8px;font-size:13px;border-radius:6px;background:var(--bg4);border:1px solid var(--border2);color:var(--text)">
       </div>
     </div>`;
@@ -1672,6 +1676,13 @@ function bindEvents(){
   on('menu-proposals',()=>nav('proposals'));
   on('menu-catalog',()=>nav('catalog'));
   on('menu-schemes',()=>nav('schemes'));
+  on('btn-sync-now', async ()=>{
+    show('⏳ Синхронизация...');
+    catalogDirty = true;
+    schemeDirty = true;
+    await syncWithServer(true).catch(()=>{});
+    show('✅ Синхронизировано: ' + state.catalog.length + ' позиций');
+  });
 
   // SCHEMES
   on('btn-add-scheme',()=>{
@@ -1691,7 +1702,7 @@ function bindEvents(){
       e.stopPropagation();
       if(confirm('Удалить схему?')){
         state.schemes.splice(parseInt(el.dataset.delScheme),1);
-        persist();show('🗑 Схема удалена');render();
+        schemeDirty = true; persist(); syncWithServer(false).catch(()=>{}); show('🗑 Схема удалена'); render();
       }
     });
   });
@@ -1705,17 +1716,17 @@ function bindEvents(){
     if(!s.name){show('⚠️ Введите название');return;}
     document.querySelectorAll('[data-sl-layers]').forEach(inp=>{
       const li=parseInt(inp.dataset.slLayers);
-      if(s.layers[li]) s.layers[li].layers=parseInt(inp.value)||1;
+      if(s.layers[li]) s.layers[li].layers=parseFloat(inp.value)||1;
     });
     if(s.id==='new') s.id=genId();
     const idx=state.schemes.findIndex(x=>x.id===s.id);
     if(idx>=0) state.schemes[idx]=s; else state.schemes.push(s);
-    persist();show('✅ Схема сохранена');nav('schemes');
+    schemeDirty = true; persist(); syncWithServer(false).catch(()=>{}); show('✅ Схема сохранена'); nav('schemes');
   });
   on('del-scheme',()=>{
     if(confirm('Удалить схему?')){
       state.schemes=state.schemes.filter(x=>x.id!==state.editScheme?.id);
-      persist();show('🗑 Удалена');nav('schemes');
+      schemeDirty = true; persist(); syncWithServer(false).catch(()=>{}); show('🗑 Удалена'); nav('schemes');
     }
   });
   document.querySelectorAll('[data-sl-add]').forEach(el=>{
@@ -1862,7 +1873,7 @@ function bindEvents(){
       const newColor=gv('le-color');
       const newPrice=gn('le-price');
       const newCons=gn('le-cons');
-      const newLayers=parseInt(g('le-layers')?.value)||1;
+      const newLayers=parseFloat(g('le-layers')?.value)||1;
       const newContainer=gn('le-container');
       const newHardener=gn('le-hardener');
 
@@ -1874,7 +1885,7 @@ function bindEvents(){
       layer.customColor = newColor || null;
       layer.customPrice = newPrice!==(prod?.price||0) ? newPrice : null;
       layer.customConsumption = newCons!==(prod?.consumption||0) ? newCons : null;
-      layer.layers = newLayers;
+      layer.layers = newLayers; // supports fractional layers like 0.5, 1.5
       // Для container/base — сохраняем всегда если изменено
       const origContainer = prod?.comp==='2c' ? (prod?.base||18) : (prod?.container||25);
       layer.customContainer = newContainer!==origContainer ? newContainer : null;
@@ -2018,7 +2029,9 @@ function bindEvents(){
 
 // При старте: показываем приложение и тянем данные с сервера
 render();
-// Синхронизируем с сервером и перерисовываем UI с актуальными данными
+// При старте только ПОЛУЧАЕМ данные с сервера (не перезаписываем)
+catalogDirty = false;
+schemeDirty = false;
 syncWithServer(true).catch(()=>{});
 </script>
 </body>
