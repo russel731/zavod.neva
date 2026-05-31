@@ -223,18 +223,16 @@ let syncPending = false;
 async function syncWithServer(doRender){
   // Один запрос: отправляем свои данные, получаем общие
   const data = await api('POST', '/sync', {
-    catalog:        catalogDirty ? state.catalog : [],
-    schemes:        schemeDirty  ? state.schemes  : [],
-    catalog_ts:     state.catalog_ts || 0,
-    schemes_ts:     state.schemes_ts || 0,
-    proposals:      state.proposals,
-    pin:            auth.pin || undefined,
-    username:       DEVICE_ID,
+    catalog:  catalogDirty ? state.catalog : [],
+    schemes:  schemeDirty  ? state.schemes  : [],
+    proposals: state.proposals,
+    pin:      auth.pin || undefined,
+    username: DEVICE_ID,
   });
   if(!data) return; // offline — работаем с localStorage
   // Общие данные (каталог, схемы) — берём с сервера если там есть
-  if(data.catalog?.length)   { state.catalog   = data.catalog; state.catalog_ts = data.catalog_ts || Date.now(); catalogDirty = false; }
-  if(data.schemes?.length)   { state.schemes   = data.schemes; state.schemes_ts = data.schemes_ts || Date.now(); schemeDirty = false; }
+  if(data.catalog?.length)   { state.catalog   = data.catalog; catalogDirty = false; }
+  if(data.schemes?.length)   { state.schemes   = data.schemes; schemeDirty  = false; }
   if(data.proposals?.length) state.proposals = data.proposals;
   if(data.user_id) { auth.userId = data.user_id; localStorage.setItem('zn_uid', data.user_id); }
   persist();
@@ -337,7 +335,7 @@ const state = {
 
 function persist(){save({catalog:state.catalog,schemes:state.schemes,proposals:state.proposals})}
 let catalogDirty = false; // флаг что каталог изменён локально
-let schemeDirty = false; // флаг что схемы изменены локально
+let schemeDirty = false;
 function genId(){return Date.now().toString(36)+Math.random().toString(36).slice(2,5)}
 function currentZone(){return state.kp.zones[state.currentZoneIdx]||null}
 function newZone(name,area){return {id:genId(),name:name,area:area,layers:[]}}
@@ -1552,7 +1550,6 @@ function saveProduct(){
     const t = collectProduct();
     if(!t.name){ show('⚠️ Введите название'); return; }
     catalogDirty = true;
-    state.catalog_ts = Date.now(); // обновляем timestamp каталога
     if(state.editProduct && state.editProduct.id && state.editProduct.id !== 'new'){
       const idx = state.catalog.findIndex(x => x.id === state.editProduct.id);
       if(idx >= 0) state.catalog[idx] = {...state.editProduct, ...t};
@@ -1575,7 +1572,6 @@ function saveProduct(){
 function deleteProduct(){
   if(!confirm('Удалить материал?')) return;
   catalogDirty = true;
-  state.catalog_ts = Date.now();
   state.catalog = state.catalog.filter(p => p.id !== state.editProduct?.id);
   persist();
   show('🗑 Удалён');
@@ -1720,7 +1716,7 @@ function bindEvents(){
     if(s.id==='new') s.id=genId();
     const idx=state.schemes.findIndex(x=>x.id===s.id);
     if(idx>=0) state.schemes[idx]=s; else state.schemes.push(s);
-    schemeDirty = true; state.schemes_ts = Date.now(); persist(); syncWithServer(false).catch(()=>{}); show('✅ Схема сохранена'); nav('schemes');
+    schemeDirty = true; persist(); syncWithServer(false).catch(()=>{}); show('✅ Схема сохранена'); nav('schemes');
   });
   on('del-scheme',()=>{
     if(confirm('Удалить схему?')){
