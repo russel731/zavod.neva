@@ -234,8 +234,35 @@ async function syncWithServer(doRender){
   });
   if(!data) return; // offline — работаем с localStorage
   // Общие данные (каталог, схемы) — берём с сервера если там есть
-  if(data.catalog?.length)   { state.catalog   = data.catalog; catalogDirty = false; }
-  if(data.schemes?.length)   { state.schemes   = data.schemes; schemeDirty  = false; }
+  if(data.catalog?.length) {
+    // Мёрдж: для каждой позиции берём более новую версию
+    const localMap = new Map(state.catalog.map(p=>[p.id, p]));
+    const serverMap = new Map(data.catalog.map(p=>[p.id, p]));
+    // Объединяем все id
+    const allIds = new Set([...localMap.keys(), ...serverMap.keys()]);
+    const merged = [];
+    allIds.forEach(id => {
+      const local = localMap.get(id);
+      const server = serverMap.get(id);
+      if(!local) merged.push(server);
+      else if(!server) merged.push(local);
+      else {
+        // Берём более новую версию
+        const localTs = local.updatedAt || 0;
+        const serverTs = server.updatedAt || 0;
+        merged.push(localTs >= serverTs ? local : server);
+      }
+    });
+    state.catalog = merged;
+    catalogDirty = false; // не перезаписываем сразу
+  }
+  if(data.schemes?.length) {
+    // Берём список с большим количеством схем
+    if(data.schemes.length > state.schemes.length) {
+      state.schemes = data.schemes;
+    }
+    schemeDirty = false;
+  }
   if(data.proposals?.length) state.proposals = data.proposals;
   if(data.user_id) { auth.userId = data.user_id; localStorage.setItem('zn_uid', data.user_id); }
   persist();
@@ -431,7 +458,7 @@ function fmtRub(n){return Math.round(n||0).toLocaleString('ru')+' ₽'}
 function show(msg){const el=document.getElementById('snack');el.textContent=msg;el.classList.add('show');clearTimeout(el._t);el._t=setTimeout(()=>el.classList.remove('show'),2500)}
 function nav(screen,extra={}){state.screen=screen;Object.assign(state,extra);render();document.getElementById('scroll-root').scrollTop=0}
 
-function getProduct(id){return state.catalog.find(p=>p.id===id)}
+function getProduct(id){return state.catalog.find(p=>p.id===id && !p.deleted)}
 function catLabel(c){return c==='primer'?'Грунт':c==='enamel'?'Эмаль':c==='lacquer'?'Лак':c==='thinner'?'Разбавитель':c==='primer_enamel'?'Грунт-эмаль':c==='water_emulsion'?'ВД краска':'Прочее'}
 function catBadgeClass(c){return c==='primer'?'badge-primer':c==='enamel'?'badge-enamel':c==='lacquer'?'badge-lacquer':c==='thinner'?'badge-thinner':c==='primer_enamel'?'badge-pe':c==='water_emulsion'?'badge-we':'badge-custom'}
 function catColor(c){return c==='primer'?'#f5a623':c==='enamel'?'#7c9fff':c==='lacquer'?'#b47fff':c==='thinner'?'#3dd68c':c==='primer_enamel'?'#ff8c69':c==='water_emulsion'?'#40c0d0':'#9ba3bf'}
@@ -681,7 +708,7 @@ function renderHome(){
   </div>
   <div class="menu-item" id="menu-catalog">
     <div class="menu-icon">🗂</div>
-    <div class="menu-text"><div class="menu-title">Каталог материалов</div><div class="menu-sub">${state.catalog.filter(c=>c.category!=='thinner').length} продуктов · ${state.catalog.filter(c=>c.category==='thinner').length} разбавителей</div></div>
+    <div class="menu-text"><div class="menu-title">Каталог материалов</div><div class="menu-sub">${state.catalog.filter(c=>c.category!=='thinner'&&!c.deleted).length} продуктов · ${state.catalog.filter(c=>c.category==='thinner'&&!c.deleted).length} разбавителей</div></div>
     <div class="menu-arrow">›</div>
   </div>
   <div class="menu-item" id="menu-schemes">
@@ -1114,7 +1141,7 @@ function renderCatalog(){
   <div class="nav"><button class="nav-back" id="back-home">← Назад</button><div class="nav-title">Каталог материалов</div></div>
   <button class="btn btn-primary" id="add-product" style="margin-bottom:14px">+ Добавить материал</button>
   ${cats.map(cat=>{
-    const prods=state.catalog.filter(p=>p.category===cat);
+    const prods=state.catalog.filter(p=>p.category===cat && !p.deleted);
     if(prods.length===0)return'';
     return `<div class="section-title">${catLabel(cat)}</div>
     ${prods.map(p=>`
@@ -1290,7 +1317,7 @@ function renderEditScheme(){
   }).join('')}
   <div class="section-title" style="margin-top:12px">Добавить позицию из каталога</div>
   ${cats.map(cat=>{
-    const prods=state.catalog.filter(p=>p.category===cat);
+    const prods=state.catalog.filter(p=>p.category===cat && !p.deleted);
     if(!prods.length) return '';
     return `<div style="margin-bottom:8px">
       <div style="font-size:11px;color:var(--text3);margin-bottom:4px">${catLabel(cat)}</div>
@@ -1553,12 +1580,13 @@ function saveProduct(){
     const t = collectProduct();
     if(!t.name){ show('⚠️ Введите название'); return; }
     catalogDirty = true;
+    const now = Date.now();
     if(state.editProduct && state.editProduct.id && state.editProduct.id !== 'new'){
       const idx = state.catalog.findIndex(x => x.id === state.editProduct.id);
-      if(idx >= 0) state.catalog[idx] = {...state.editProduct, ...t};
-      else state.catalog.push({...t, id: state.editProduct.id});
+      if(idx >= 0) state.catalog[idx] = {...state.editProduct, ...t, updatedAt: now};
+      else state.catalog.push({...t, id: state.editProduct.id, updatedAt: now});
     } else {
-      state.catalog.push({...t, id: genId()});
+      state.catalog.push({...t, id: genId(), updatedAt: now});
     }
     persist();
     show('✅ Сохранено');
@@ -1575,7 +1603,10 @@ function saveProduct(){
 function deleteProduct(){
   if(!confirm('Удалить материал?')) return;
   catalogDirty = true;
-  state.catalog = state.catalog.filter(p => p.id !== state.editProduct?.id);
+  const delId = state.editProduct?.id;
+  // Помечаем как удалённый с timestamp чтобы другие устройства тоже удалили
+  const delIdx = state.catalog.findIndex(p => p.id === delId);
+  if(delIdx >= 0) state.catalog[delIdx] = {...state.catalog[delIdx], deleted: true, updatedAt: Date.now()};
   persist();
   show('🗑 Удалён');
   state.editProduct = null;
@@ -2027,10 +2058,9 @@ function bindEvents(){
 
 // При старте: показываем приложение
 render();
-// При старте всегда синхронизируем — отправляем свой каталог и получаем серверный
-// Побеждает тот у кого больше позиций (логика на сервере)
-catalogDirty = true;
-schemeDirty = true;
+// При старте ТОЛЬКО получаем данные с сервера — не перезаписываем
+catalogDirty = false;
+schemeDirty = false;
 syncWithServer(true).catch(()=>{});
 </script>
 </body>
