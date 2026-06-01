@@ -224,49 +224,27 @@ async function api(method, path, body){
 /* ===== SYNC ===== */
 let syncPending = false;
 async function syncWithServer(doRender){
-  // Один запрос: отправляем свои данные, получаем общие
   const data = await api('POST', '/sync', {
-    catalog:  catalogDirty ? state.catalog : [],
-    schemes:  schemeDirty  ? state.schemes  : [],
+    catalog:   catalogDirty ? state.catalog : [],
+    schemes:   schemeDirty  ? state.schemes  : [],
     proposals: state.proposals,
-    pin:      auth.pin || undefined,
-    username: DEVICE_ID,
+    pin:       auth.pin || undefined,
+    username:  DEVICE_ID,
   });
-  if(!data) return; // offline — работаем с localStorage
-  // Общие данные (каталог, схемы) — берём с сервера если там есть
+  if(!data) return; // offline
+  // Сервер — единственный источник правды для каталога и схем
+  // Клиент получает серверные данные всегда
   if(data.catalog?.length) {
-    // Мёрдж: для каждой позиции берём более новую версию
-    const localMap = new Map(state.catalog.map(p=>[p.id, p]));
-    const serverMap = new Map(data.catalog.map(p=>[p.id, p]));
-    // Объединяем все id
-    const allIds = new Set([...localMap.keys(), ...serverMap.keys()]);
-    const merged = [];
-    allIds.forEach(id => {
-      const local = localMap.get(id);
-      const server = serverMap.get(id);
-      if(!local) merged.push(server);
-      else if(!server) merged.push(local);
-      else {
-        // Берём более новую версию
-        const localTs = local.updatedAt || 0;
-        const serverTs = server.updatedAt || 0;
-        merged.push(localTs >= serverTs ? local : server);
-      }
-    });
-    state.catalog = merged;
-    catalogDirty = false; // не перезаписываем сразу
+    state.catalog = data.catalog;
+    catalogDirty = false;
   }
   if(data.schemes?.length) {
-    // Берём список с большим количеством схем
-    if(data.schemes.length > state.schemes.length) {
-      state.schemes = data.schemes;
-    }
+    state.schemes = data.schemes;
     schemeDirty = false;
   }
   if(data.proposals?.length) state.proposals = data.proposals;
   if(data.user_id) { auth.userId = data.user_id; localStorage.setItem('zn_uid', data.user_id); }
   persist();
-  // render() только если явно запрошен
   if(doRender) render();
 }
 // Оставляем для совместимости
