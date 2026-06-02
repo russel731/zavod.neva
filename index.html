@@ -1847,7 +1847,14 @@ function bindEvents(){
   // zone-mode-manual handled via onclick
   // zone-mode-scheme handled via onclick
   on('edit-zone-info',()=>nav('kp_add_zone'));
-  on('add-layer',()=>{state.addLayerCategory='primer';nav('kp_add_layer')});
+  const addLayerBtn = document.getElementById('add-layer');
+  if(addLayerBtn) addLayerBtn.addEventListener('click', e=>{
+    e.stopPropagation();
+    e.preventDefault();
+    state.addLayerCategory = 'primer';
+    state.addLayerSearch = '';
+    nav('kp_add_layer');
+  }, {once: true});
   on('go-kp-result2',()=>{state.expandedLayer=null;nav('kp_zones');});
   document.querySelectorAll('[data-up]').forEach(el=>{
     el.addEventListener('click',e=>{
@@ -1866,7 +1873,7 @@ function bindEvents(){
       if(state.expandedLayer===idx) state.expandedLayer=null;
       else if(state.expandedLayer>idx) state.expandedLayer--;
       render();
-    });
+    }, {once: true});
   });
 
   // TOGGLE EDIT FORM
@@ -1944,13 +1951,14 @@ function bindEvents(){
     el.addEventListener('click',()=>{state.addLayerCategory=el.dataset.cat;render()});
   });
   document.querySelectorAll('[data-add-prod]').forEach(el=>{
-    el.addEventListener('click',()=>{
+    el.addEventListener('click', e=>{
+      e.stopPropagation();
       const z=currentZone();if(!z)return;
       z.layers.push({productId:el.dataset.addProd,layers:1,customName:null,customPrice:null,customConsumption:null,customComp:null});
       state.addLayerSearch='';
       nav('kp_build');
       show('✅ Добавлено');
-    });
+    }, {once: true});
   });
   on('add-custom',()=>{
     const name=document.getElementById('custom-name')?.value.trim();
