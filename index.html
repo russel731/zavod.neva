@@ -242,7 +242,7 @@ async function syncWithServer(doRender){
     state.schemes = data.schemes;
     schemeDirty = false;
   }
-  if(data.proposals?.length) state.proposals = data.proposals;
+  if(data.proposals) { state.proposals = data.proposals; proposalsDirty = false; }
   if(data.user_id) { auth.userId = data.user_id; localStorage.setItem('zn_uid', data.user_id); }
   persist();
   if(doRender) render();
@@ -250,8 +250,6 @@ async function syncWithServer(doRender){
 // Оставляем для совместимости
 async function syncPull(){ return syncWithServer(true); }
 async function syncPush(){ return syncWithServer(false); }
-// Автосинк при изменениях
-const _origPersist = null;
 function persistAndSync(){
   persist();
   syncWithServer(false).catch(()=>{}); // синхронизируем без перерисовки
@@ -346,8 +344,9 @@ const state = {
 };
 
 function persist(){save({catalog:state.catalog,schemes:state.schemes,proposals:state.proposals})}
-let catalogDirty = false; // флаг что каталог изменён локально
+let catalogDirty = false;
 let schemeDirty = false;
+let proposalsDirty = false;
 function genId(){return Date.now().toString(36)+Math.random().toString(36).slice(2,5)}
 function currentZone(){return state.kp.zones[state.currentZoneIdx]||null}
 function newZone(name,area){return {id:genId(),name:name,area:area,layers:[]}}
@@ -1928,7 +1927,7 @@ function bindEvents(){
     const r=calcKP();
     const pr={id:genId(),name:state.kp.name||'Без названия',totalArea:r.totalArea,includeThinners:state.kp.includeThinners,
       zoneCount:r.zones.length,total:r.total,date:Date.now(),result:r,kp:JSON.parse(JSON.stringify(state.kp))};
-    state.proposals.push(pr);persistAndSync();show('✅ КП сохранено!');
+    state.proposals.push(pr);proposalsDirty=true;persistAndSync();show('✅ КП сохранено!');
   });
   on('export-kp',()=>exportPDF(state.kp));
 
@@ -1942,7 +1941,7 @@ function bindEvents(){
   document.querySelectorAll('[data-pdel]').forEach(el=>{
     el.addEventListener('click',e=>{
       e.stopPropagation();
-      if(confirm('Удалить КП?')){state.proposals=state.proposals.filter(p=>p.id!==el.dataset.pdel);persist();show('🗑 Удалено');render()}
+      if(confirm('Удалить КП?')){state.proposals=state.proposals.filter(p=>p.id!==el.dataset.pdel);proposalsDirty=true;persistAndSync();show('🗑 Удалено');render()}
     });
   });
 
@@ -1952,7 +1951,7 @@ function bindEvents(){
   on('del-this',()=>{
     if(confirm('Удалить КП?')){
       state.proposals=state.proposals.filter(p=>p.id!==state.viewProposal.id);
-      persist();show('🗑 Удалено');nav('proposals');
+      proposalsDirty=true;persistAndSync();show('🗑 Удалено');nav('proposals');
     }
   });
 
