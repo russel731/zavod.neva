@@ -242,7 +242,7 @@ async function syncWithServer(doRender){
     state.schemes = data.schemes;
     schemeDirty = false;
   }
-  if(data.proposals) { state.proposals = data.proposals; proposalsDirty = false; }
+  if(data.proposals?.length) state.proposals = data.proposals;
   if(data.user_id) { auth.userId = data.user_id; localStorage.setItem('zn_uid', data.user_id); }
   persist();
   if(doRender) render();
@@ -250,6 +250,8 @@ async function syncWithServer(doRender){
 // Оставляем для совместимости
 async function syncPull(){ return syncWithServer(true); }
 async function syncPush(){ return syncWithServer(false); }
+// Автосинк при изменениях
+const _origPersist = null;
 function persistAndSync(){
   persist();
   syncWithServer(false).catch(()=>{}); // синхронизируем без перерисовки
@@ -337,12 +339,15 @@ const state = {
   addingLayer:false,
   addLayerCategory:'primer',
   addLayerSearch:'',
+  customCat:'primer', customComp:'1c', customUnit:'kg',
+  customName:'', customFullName:'', customColor:'',
+  customPrice:'', customCons:'', customLayers:1,
+  customBase:18, customCont:25, customHard:3, customComment:'',
 };
 
 function persist(){save({catalog:state.catalog,schemes:state.schemes,proposals:state.proposals})}
-let catalogDirty = false;
+let catalogDirty = false; // флаг что каталог изменён локально
 let schemeDirty = false;
-let proposalsDirty = false;
 function genId(){return Date.now().toString(36)+Math.random().toString(36).slice(2,5)}
 function currentZone(){return state.kp.zones[state.currentZoneIdx]||null}
 function newZone(name,area){return {id:genId(),name:name,area:area,layers:[]}}
@@ -911,28 +916,63 @@ function renderAddLayer(){
   <div class="divider"></div>
   <div class="section-title">Произвольная позиция</div>
   <div class="card">
-    <div class="field"><label>Название</label><input id="custom-name" placeholder="Напр: Грунт специальный"></div>
+    <div class="section-title" style="margin-bottom:8px">Категория</div>
+    <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:5px;margin-bottom:10px">
+      ${['primer','enamel','lacquer','primer_enamel','water_emulsion','thinner'].map(cat=>\`
+      <div class="type-card\${(state.customCat||'primer')===cat?' selected':''}" data-custom-cat="\${cat}" style="padding:7px 4px">
+        <div class="type-card-icon" style="font-size:13px">\${cat==='primer'?'🟡':cat==='enamel'?'🔵':cat==='lacquer'?'🟣':cat==='primer_enamel'?'🟠':cat==='water_emulsion'?'🩵':'💧'}</div>
+        <div class="type-card-name" style="font-size:10px">\${catLabel(cat)}</div>
+      </div>\`).join('')}
+    </div>
+
+    \${(state.customCat||'primer')!=='thinner'?\`
+    <div class="section-title" style="margin-bottom:6px">Компонентность</div>
+    <div class="type-grid" style="margin-bottom:10px">
+      <div class="type-card\${(state.customComp||'1c')==='1c'?' selected':''}" data-custom-comp="1c">
+        <div class="type-card-name">1К</div><div class="type-card-sub">Однокомп.</div></div>
+      <div class="type-card\${(state.customComp||'1c')==='2c'?' selected':''}" data-custom-comp="2c">
+        <div class="type-card-name">2К</div><div class="type-card-sub">Двухкомп.</div></div>
+    </div>\`:''}
+
+    <div class="section-title" style="margin-bottom:6px">Единица измерения</div>
+    <div class="type-grid" style="margin-bottom:10px">
+      <div class="type-card\${(state.customUnit||'kg')==='kg'?' selected':''}" data-custom-unit="kg">
+        <div class="type-card-icon" style="font-size:15px">⚖️</div>
+        <div class="type-card-name" style="font-size:11px">Килограммы</div></div>
+      <div class="type-card\${(state.customUnit||'kg')==='l'?' selected':''}" data-custom-unit="l">
+        <div class="type-card-icon" style="font-size:15px">🧴</div>
+        <div class="type-card-name" style="font-size:11px">Литры</div></div>
+    </div>
+
+    <div class="field"><label>Название</label>
+      <input id="custom-name" value="\${state.customName||''}" placeholder="Напр: Грунт ЭП специальный"></div>
+    <div class="field"><label>Цвет / RAL</label>
+      <input id="custom-color" value="\${state.customColor||''}" placeholder="RAL 7040 или Серый"></div>
     <div class="field-row">
-      <div class="field"><label>Расход (г/м²)</label><input id="custom-cons" type="number" inputmode="decimal" placeholder="150"></div>
-      <div class="field"><label>Цена (₽/кг)</label><input id="custom-price" type="number" inputmode="decimal" placeholder="180"></div>
+      <div class="field"><label>Цена (\${(state.customUnit||'kg')==='l'?'₽/л':'₽/кг'})</label>
+        <input id="custom-price" type="number" inputmode="decimal" value="\${state.customPrice||''}"></div>
+      \${(state.customCat||'primer')!=='thinner'?\`
+      <div class="field"><label>Расход (\${(state.customUnit||'kg')==='l'?'мл':'г'}/м²)</label>
+        <input id="custom-cons" type="number" inputmode="decimal" value="\${state.customCons||''}"></div>\`:''}
     </div>
     <div class="field-row">
-      <div class="field"><label>Кол-во слоёв</label><input id="custom-layers" type="number" inputmode="numeric" placeholder="1" value="1"></div>
-      <div class="field"><label>Тип</label>
-        <select id="custom-comp"><option value="1c">1К</option><option value="2c">2К</option></select>
-      </div>
+      <div class="field"><label>Слоёв</label>
+        <input id="custom-layers" type="number" inputmode="decimal" min="0.5" step="0.5" value="\${state.customLayers||1}"></div>
+      \${(state.customComp||'1c')==='2c' && (state.customCat||'primer')!=='thinner'?\`
+      <div class="field"><label>Основа (кг/компл)</label>
+        <input id="custom-base" type="number" inputmode="decimal" value="\${state.customBase||18}"></div>\`:\`
+      <div class="field"><label>\${(state.customUnit||'kg')==='l'?'Объём тары (л)':'Вес тары (кг)'}</label>
+        <input id="custom-cont" type="number" inputmode="decimal" value="\${state.customCont||((state.customUnit||'kg')==='l'?10:25)}"></div>\`}
     </div>
-    <div class="field"><label>Категория</label>
-      <select id="custom-cat">
-        <option value="primer">Грунт</option>
-        <option value="enamel">Эмаль</option>
-        <option value="lacquer">Лак</option>
-        <option value="thinner">Разбавитель</option>
-        <option value="custom">Прочее</option>
-      </select>
+    \${(state.customComp||'1c')==='2c' && (state.customCat||'primer')!=='thinner'?\`
+    <div class="field"><label>Отвердитель (кг/компл)</label>
+      <input id="custom-hard" type="number" inputmode="decimal" value="\${state.customHard||3}"></div>\`:''}
+
+    <div class="btn-row" style="margin-top:12px">
+      <button class="btn btn-secondary" id="add-custom-only">📋 Только в КП</button>
+      <button class="btn btn-primary" id="add-custom-save">💾 В КП + каталог</button>
     </div>
-    <button class="btn btn-primary" id="add-custom">+ Добавить позицию</button>
-  </div>`;
+  </div>\`;
 }
 
 
@@ -1959,18 +1999,81 @@ function bindEvents(){
       show('✅ Добавлено');
     }, {once: true});
   });
-  on('add-custom',()=>{
-    const name=document.getElementById('custom-name')?.value.trim();
-    const cons=parseFloat(document.getElementById('custom-cons')?.value)||0;
-    const price=parseFloat(document.getElementById('custom-price')?.value)||0;
-    const layers=parseInt(document.getElementById('custom-layers')?.value)||1;
-    const comp=document.getElementById('custom-comp')?.value||'1c';
-    const cat=document.getElementById('custom-cat')?.value||'custom';
-    if(!name){show('⚠️ Введите название');return}
-    const z2=currentZone();if(!z2)return;
-    z2.layers.push({productId:null,layers,customName:name,customPrice:price,customConsumption:cons,customComp:comp,category:cat});
-    nav('kp_build');
-    show('✅ Добавлено');
+  // Переключение в custom форме — сохраняем значения полей при перерисовке
+  function saveCustomFormState(){
+    state.customName = document.getElementById('custom-name')?.value||'';
+    state.customColor = document.getElementById('custom-color')?.value||'';
+    state.customPrice = document.getElementById('custom-price')?.value||'';
+    state.customCons = document.getElementById('custom-cons')?.value||'';
+    state.customLayers = document.getElementById('custom-layers')?.value||1;
+    state.customBase = document.getElementById('custom-base')?.value||18;
+    state.customCont = document.getElementById('custom-cont')?.value||25;
+    state.customHard = document.getElementById('custom-hard')?.value||3;
+  }
+  document.querySelectorAll('[data-custom-cat]').forEach(el=>{
+    el.addEventListener('click', ()=>{ saveCustomFormState(); state.customCat=el.dataset.customCat; render(); });
+  });
+  document.querySelectorAll('[data-custom-comp]').forEach(el=>{
+    el.addEventListener('click', ()=>{ saveCustomFormState(); state.customComp=el.dataset.customComp; render(); });
+  });
+  document.querySelectorAll('[data-custom-unit]').forEach(el=>{
+    el.addEventListener('click', ()=>{ saveCustomFormState(); state.customUnit=el.dataset.customUnit; render(); });
+  });
+
+  function collectCustomLayer(){
+    const cat = state.customCat||'primer';
+    const comp = cat==='thinner' ? '1c' : (state.customComp||'1c');
+    const unit = state.customUnit||'kg';
+    const isTh = cat==='thinner';
+    const is2c = comp==='2c';
+    const isL = unit==='l';
+    const name = document.getElementById('custom-name')?.value.trim();
+    if(!name){show('⚠️ Введите название');return null;}
+    const color = document.getElementById('custom-color')?.value.trim()||'';
+    const price = parseFloat(document.getElementById('custom-price')?.value)||0;
+    const cons = isTh ? 0 : (parseFloat(document.getElementById('custom-cons')?.value)||0);
+    const layers = parseFloat(document.getElementById('custom-layers')?.value)||1;
+    const container = isL ? (parseFloat(document.getElementById('custom-cont')?.value)||10)
+                          : is2c ? null : (parseFloat(document.getElementById('custom-cont')?.value)||25);
+    const base = is2c && !isL ? (parseFloat(document.getElementById('custom-base')?.value)||18) : null;
+    const hardener = is2c && !isL ? (parseFloat(document.getElementById('custom-hard')?.value)||3) : null;
+    return {cat, comp, unit, name, color, price, cons, layers, container, base, hardener};
+  }
+
+  on('add-custom-only', ()=>{
+    const d = collectCustomLayer(); if(!d) return;
+    const z2 = currentZone(); if(!z2) return;
+    z2.layers.push({
+      productId: null, layers: d.layers,
+      customName: d.name, customColor: d.color,
+      customPrice: d.price, customConsumption: d.cons,
+      customComp: d.comp, customUnit: d.unit,
+      customContainer: d.is2c ? null : d.container,
+      customBase: d.base, customHardener: d.hardener,
+      category: d.cat,
+    });
+    state.customName=''; state.customColor=''; state.customPrice='';
+    state.customCons=''; state.customLayers=1;
+    nav('kp_build'); show('✅ Добавлено в КП');
+  });
+
+  on('add-custom-save', ()=>{
+    const d = collectCustomLayer(); if(!d) return;
+    const z2 = currentZone(); if(!z2) return;
+    const newProd = {
+      id: genId(), category: d.cat, comp: d.comp, unit: d.unit,
+      name: d.name, fullName: d.name, color: d.color,
+      price: d.price, consumption: d.cons,
+      container: d.container, base: d.base, hardener: d.hardener,
+      thinner_id: null, thinnerPct: 0, updatedAt: Date.now(),
+    };
+    state.catalog.push(newProd);
+    catalogDirty = true;
+    z2.layers.push({productId: newProd.id, layers: d.layers});
+    persist(); syncWithServer(false).catch(()=>{});
+    state.customName=''; state.customColor=''; state.customPrice='';
+    state.customCons=''; state.customLayers=1;
+    nav('kp_build'); show('✅ Добавлено в КП и каталог');
   });
 
   // KP SETTINGS
@@ -2009,7 +2112,7 @@ function bindEvents(){
     const r=calcKP();
     const pr={id:genId(),name:state.kp.name||'Без названия',totalArea:r.totalArea,includeThinners:state.kp.includeThinners,
       zoneCount:r.zones.length,total:r.total,date:Date.now(),result:r,kp:JSON.parse(JSON.stringify(state.kp))};
-    state.proposals.push(pr);proposalsDirty=true;persistAndSync();show('✅ КП сохранено!');
+    state.proposals.push(pr);persistAndSync();show('✅ КП сохранено!');
   });
   on('export-kp',()=>exportPDF(state.kp));
 
@@ -2023,7 +2126,7 @@ function bindEvents(){
   document.querySelectorAll('[data-pdel]').forEach(el=>{
     el.addEventListener('click',e=>{
       e.stopPropagation();
-      if(confirm('Удалить КП?')){state.proposals=state.proposals.filter(p=>p.id!==el.dataset.pdel);proposalsDirty=true;persistAndSync();show('🗑 Удалено');render()}
+      if(confirm('Удалить КП?')){state.proposals=state.proposals.filter(p=>p.id!==el.dataset.pdel);persist();show('🗑 Удалено');render()}
     });
   });
 
@@ -2033,7 +2136,7 @@ function bindEvents(){
   on('del-this',()=>{
     if(confirm('Удалить КП?')){
       state.proposals=state.proposals.filter(p=>p.id!==state.viewProposal.id);
-      proposalsDirty=true;persistAndSync();show('🗑 Удалено');nav('proposals');
+      persist();show('🗑 Удалено');nav('proposals');
     }
   });
 
