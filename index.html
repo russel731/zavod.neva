@@ -339,6 +339,10 @@ const state = {
   addingLayer:false,
   addLayerCategory:'primer',
   addLayerSearch:'',
+  // ID редактируемого сохранённого КП (null = новое КП)
+  editingProposalId:null,
+  // Состояние формы "Произвольная позиция"
+  customForm:{unit:'kg',comp:'1c'},
 };
 
 function persist(){save({catalog:state.catalog,schemes:state.schemes,proposals:state.proposals})}
@@ -867,6 +871,9 @@ function renderAddLayer(){
   const cats=['primer','enamel','lacquer','thinner','custom'];
   const selCat = state.addLayerCategory||'primer';
   const search = (state.addLayerSearch||'').toLowerCase().trim();
+  const cf = state.customForm || (state.customForm = {unit:'kg',comp:'1c'});
+  const cfIsL  = cf.unit === 'l';
+  const cfIs2c = cf.comp === '2c';
   // Если есть поиск — ищем по всем категориям, иначе по выбранной
   const products = search
     ? state.catalog.filter(p=>
@@ -912,27 +919,56 @@ function renderAddLayer(){
   <div class="divider"></div>
   <div class="section-title">Произвольная позиция</div>
   <div class="card">
-    <div class="field"><label>Название</label><input id="custom-name" placeholder="Напр: Грунт специальный"></div>
+    <div class="field"><label>Краткое название (в калькуляторе)</label>
+      <input id="custom-name" value="${esc(cf.name||'')}" placeholder="Напр: Грунт специальный"></div>
+    <div class="field"><label>Полное название для PDF</label>
+      <input id="custom-fullname" value="${esc(cf.fullName||'')}" placeholder="Напр: Грунт эпоксидный специальный однокомп."></div>
+    <div class="field"><label>Цвет / RAL</label>
+      <input id="custom-color" value="${esc(cf.color||'')}" placeholder="Напр: RAL 7040"></div>
+
+    <div class="section-title" style="margin-top:8px">Единица измерения</div>
+    <div class="type-grid" style="margin-bottom:10px">
+      <div class="type-card${!cfIsL?' selected':''}" data-cf-unit="kg">
+        <div class="type-card-name">кг</div><div class="type-card-sub">г/м² · кг · ₽/кг</div></div>
+      <div class="type-card${cfIsL?' selected':''}" data-cf-unit="l">
+        <div class="type-card-name">л</div><div class="type-card-sub">мл/м² · л · ₽/л</div></div>
+    </div>
+
+    <div class="section-title">Компонентность</div>
+    <div class="type-grid" style="margin-bottom:10px">
+      <div class="type-card${!cfIs2c?' selected':''}" data-cf-comp="1c">
+        <div class="type-card-name">1К</div><div class="type-card-sub">Однокомп.</div></div>
+      <div class="type-card${cfIs2c?' selected':''}" data-cf-comp="2c">
+        <div class="type-card-name">2К</div><div class="type-card-sub">Двухкомп.</div></div>
+    </div>
+
     <div class="field-row">
-      <div class="field"><label>Расход (г/м²)</label><input id="custom-cons" type="number" inputmode="decimal" placeholder="150"></div>
-      <div class="field"><label>Цена (₽/кг)</label><input id="custom-price" type="number" inputmode="decimal" placeholder="180"></div>
+      <div class="field"><label>Расход (${cfIsL?'мл':'г'}/м²)</label><input id="custom-cons" type="number" inputmode="decimal" value="${cf.cons||''}" placeholder="150"></div>
+      <div class="field"><label>Цена (${cfIsL?'₽/л':'₽/кг'})</label><input id="custom-price" type="number" inputmode="decimal" value="${cf.price||''}" placeholder="180"></div>
     </div>
     <div class="field-row">
-      <div class="field"><label>Кол-во слоёв</label><input id="custom-layers" type="number" inputmode="numeric" placeholder="1" value="1"></div>
-      <div class="field"><label>Тип</label>
-        <select id="custom-comp"><option value="1c">1К</option><option value="2c">2К</option></select>
-      </div>
+      <div class="field"><label>Кол-во слоёв</label><input id="custom-layers" type="number" inputmode="decimal" placeholder="1" value="${cf.layers||1}"></div>
+      <div class="field"><label>${cfIsL?'Объём тары (л)':(cfIs2c?'Основа (кг/компл)':'Вес тары (кг)')}</label>
+        <input id="custom-cont" type="number" inputmode="decimal" value="${cf.container||''}" placeholder="${cfIsL?'10':(cfIs2c?'18':'25')}"></div>
     </div>
+    ${cfIs2c && !cfIsL ? `<div class="field"><label>Отвердитель (кг/компл)</label>
+      <input id="custom-hard" type="number" inputmode="decimal" value="${cf.hardener||''}" placeholder="3"></div>` : ''}
+
     <div class="field"><label>Категория</label>
       <select id="custom-cat">
-        <option value="primer">Грунт</option>
-        <option value="enamel">Эмаль</option>
-        <option value="lacquer">Лак</option>
-        <option value="thinner">Разбавитель</option>
-        <option value="custom">Прочее</option>
+        <option value="primer"${cf.category==='primer'?' selected':''}>Грунт</option>
+        <option value="enamel"${cf.category==='enamel'?' selected':''}>Эмаль</option>
+        <option value="lacquer"${cf.category==='lacquer'?' selected':''}>Лак</option>
+        <option value="primer_enamel"${cf.category==='primer_enamel'?' selected':''}>Грунт-эмаль</option>
+        <option value="water_emulsion"${cf.category==='water_emulsion'?' selected':''}>Водоэмульсионка</option>
+        <option value="thinner"${cf.category==='thinner'?' selected':''}>Разбавитель</option>
+        <option value="custom"${cf.category==='custom'||!cf.category?' selected':''}>Прочее</option>
       </select>
     </div>
-    <button class="btn btn-primary" id="add-custom">+ Добавить позицию</button>
+    <div class="btn-row">
+      <button class="btn btn-secondary" id="add-custom-kp">📋 Только в КП</button>
+      <button class="btn btn-primary" id="add-custom-catalog">💾 В КП + каталог</button>
+    </div>
   </div>`;
 }
 
@@ -1043,7 +1079,7 @@ function renderKPResult(){
 
   ${kp.note ? '<div class="alert alert-warn" style="margin-top:8px">📝 '+esc(kp.note)+'</div>' : ''}
   <div class="btn-row" style="margin-top:14px">
-    <button class="btn btn-secondary" id="save-kp">💾 Сохранить КП</button>
+    <button class="btn btn-secondary" id="save-kp">${state.editingProposalId?'💾 Обновить КП':'💾 Сохранить КП'}</button>
     <button class="btn btn-success" id="export-kp">📄 PDF</button>
   </div>
   ${tg?.initData ? `<button class="btn btn-secondary" id="send-pdf-tg" style="margin-top:8px">✈️ Отправить PDF в Telegram</button>` : ''}
@@ -1122,9 +1158,10 @@ function renderViewProposal(){
   ${zones.length===0?`<div class="alert alert-warn">⚠️ Детали недоступны (старый формат КП)</div>`:''}
 
   <div class="btn-row">
+    <button class="btn btn-secondary" id="edit-proposal">✏️ Редактировать</button>
     <button class="btn btn-success" id="export-saved">📄 PDF</button>
-    <button class="btn btn-danger" id="del-this">🗑 Удалить</button>
-  </div>`;
+  </div>
+  <div style="margin-top:8px"><button class="btn btn-danger" id="del-this">🗑 Удалить</button></div>`;
 }
 
 
@@ -1960,25 +1997,111 @@ function bindEvents(){
       show('✅ Добавлено');
     }, {once: true});
   });
-  on('add-custom',()=>{
-    const name=document.getElementById('custom-name')?.value.trim();
-    const cons=parseFloat(document.getElementById('custom-cons')?.value)||0;
-    const price=parseFloat(document.getElementById('custom-price')?.value)||0;
-    const layers=parseInt(document.getElementById('custom-layers')?.value)||1;
-    const comp=document.getElementById('custom-comp')?.value||'1c';
-    const cat=document.getElementById('custom-cat')?.value||'custom';
-    if(!name){show('⚠️ Введите название');return}
-    const z2=currentZone();if(!z2)return;
-    z2.layers.push({productId:null,layers,customName:name,customPrice:price,customConsumption:cons,customComp:comp,category:cat});
+  // TOGGLE UNIT/COMP В ФОРМЕ "ПРОИЗВОЛЬНАЯ ПОЗИЦИЯ"
+  function saveCustomFormFields(){
+    const cf = state.customForm;
+    const g = id => document.getElementById(id);
+    cf.name      = g('custom-name')?.value.trim() || '';
+    cf.fullName  = g('custom-fullname')?.value.trim() || '';
+    cf.color     = g('custom-color')?.value.trim() || '';
+    cf.cons      = parseFloat(g('custom-cons')?.value) || 0;
+    cf.price     = parseFloat(g('custom-price')?.value) || 0;
+    cf.layers    = parseFloat(g('custom-layers')?.value) || 1;
+    cf.container = parseFloat(g('custom-cont')?.value) || 0;
+    cf.hardener  = parseFloat(g('custom-hard')?.value) || 0;
+    cf.category  = g('custom-cat')?.value || cf.category || 'custom';
+  }
+  document.querySelectorAll('[data-cf-unit]').forEach(el=>{
+    el.addEventListener('click',()=>{
+      saveCustomFormFields();
+      state.customForm.unit = el.dataset.cfUnit;
+      render();
+    });
+  });
+  document.querySelectorAll('[data-cf-comp]').forEach(el=>{
+    el.addEventListener('click',()=>{
+      saveCustomFormFields();
+      state.customForm.comp = el.dataset.cfComp;
+      render();
+    });
+  });
+
+  // СБОР ДАННЫХ ИЗ ФОРМЫ "ПРОИЗВОЛЬНАЯ ПОЗИЦИЯ"
+  function collectCustomLayer(){
+    saveCustomFormFields();
+    const cf = state.customForm;
+    if(!cf.name){show('⚠️ Введите название');return null}
+    const is2c = cf.comp==='2c', isL = cf.unit==='l';
+    const layer = {
+      productId:null,
+      layers:cf.layers||1,
+      category:cf.category||'custom',
+      customComp:cf.comp,
+      customUnit:cf.unit,
+      customName:cf.name,
+      customFullName:cf.fullName || cf.name,
+      customColor:cf.color || null,
+      customPrice:cf.price||0,
+      customConsumption:cf.cons||0,
+      customContainer:cf.container || null,
+      customHardener:(is2c && !isL) ? (cf.hardener||3) : null,
+    };
+    return layer;
+  }
+
+  function resetCustomForm(){
+    state.customForm = {unit:'kg',comp:'1c'};
+  }
+
+  on('add-custom-kp',()=>{
+    const layer = collectCustomLayer();
+    if(!layer) return;
+    const z=currentZone();if(!z)return;
+    z.layers.push(layer);
+    resetCustomForm();
     nav('kp_build');
-    show('✅ Добавлено');
+    show('✅ Добавлено в КП');
+  });
+
+  on('add-custom-catalog',()=>{
+    const layer = collectCustomLayer();
+    if(!layer) return;
+    const cf = state.customForm;
+    const is2c = cf.comp==='2c', isL = cf.unit==='l';
+    const product = {
+      id: genId(),
+      category: cf.category||'custom',
+      comp: cf.comp,
+      unit: cf.unit,
+      name: cf.name,
+      fullName: cf.fullName || cf.name,
+      color: cf.color || '',
+      price: cf.price||0,
+      comment: '',
+      consumption: cf.cons||0,
+      container: isL ? (cf.container||10) : (is2c ? null : (cf.container||25)),
+      base: (is2c && !isL) ? (cf.container||18) : null,
+      hardener: (is2c && !isL) ? (cf.hardener||3) : null,
+      thinner_id: null,
+      thinnerPct: 0,
+      updatedAt: Date.now(),
+    };
+    state.catalog.push(product);
+    catalogDirty = true;
+    const z=currentZone();if(!z)return;
+    z.layers.push(layer);
+    resetCustomForm();
+    persist();
+    nav('kp_build');
+    show('✅ Добавлено в КП и каталог');
+    syncWithServer(false).catch(e=>console.warn('sync error:',e));
   });
 
   // KP SETTINGS
 
   // KP RESULT
   on('back-kp-build',()=>nav('kp_build'));
-  on('new-kp',()=>{state.kp={name:'',info:'',note:'',zones:[]};state.currentZoneIdx=null;nav('kp_start')});
+  on('new-kp',()=>{state.kp={name:'',info:'',note:'',zones:[],includeThinners:true,viewMode:'total'};state.currentZoneIdx=null;state.editingProposalId=null;nav('kp_start')});
   on('send-pdf-tg', async ()=>{
     const kp = state.kp;
     const chatId = tg?.initDataUnsafe?.user?.id;
@@ -2008,9 +2131,18 @@ function bindEvents(){
   });
   on('save-kp',()=>{
     const r=calcKP();
-    const pr={id:genId(),name:state.kp.name||'Без названия',totalArea:r.totalArea,includeThinners:state.kp.includeThinners,
-      zoneCount:r.zones.length,total:r.total,date:Date.now(),result:r,kp:JSON.parse(JSON.stringify(state.kp))};
-    state.proposals.push(pr);persistAndSync();show('✅ КП сохранено!');
+    if(state.editingProposalId){
+      const idx = state.proposals.findIndex(p=>p.id===state.editingProposalId);
+      const pr={id:state.editingProposalId,name:state.kp.name||'Без названия',totalArea:r.totalArea,includeThinners:state.kp.includeThinners,
+        zoneCount:r.zones.length,total:r.total,date:Date.now(),result:r,kp:JSON.parse(JSON.stringify(state.kp))};
+      if(idx>=0) state.proposals[idx]=pr; else state.proposals.push(pr);
+      state.editingProposalId=null;
+      persistAndSync();show('✅ КП обновлено!');
+    } else {
+      const pr={id:genId(),name:state.kp.name||'Без названия',totalArea:r.totalArea,includeThinners:state.kp.includeThinners,
+        zoneCount:r.zones.length,total:r.total,date:Date.now(),result:r,kp:JSON.parse(JSON.stringify(state.kp))};
+      state.proposals.push(pr);persistAndSync();show('✅ КП сохранено!');
+    }
   });
   on('export-kp',()=>exportPDF(state.kp));
 
@@ -2031,6 +2163,16 @@ function bindEvents(){
   // VIEW PROPOSAL
   on('back-proposals',()=>nav('proposals'));
   on('export-saved',()=>{if(state.viewProposal)exportPDF(state.viewProposal.kp,state.viewProposal.result)});
+  on('edit-proposal',()=>{
+    if(!state.viewProposal) return;
+    state.kp = JSON.parse(JSON.stringify(state.viewProposal.kp));
+    if(!state.kp.zones) state.kp.zones=[];
+    if(state.kp.includeThinners===undefined) state.kp.includeThinners=true;
+    if(!state.kp.viewMode) state.kp.viewMode='total';
+    state.editingProposalId = state.viewProposal.id;
+    state.currentZoneIdx = null;
+    nav('kp_zones');
+  });
   on('del-this',()=>{
     if(confirm('Удалить КП?')){
       state.proposals=state.proposals.filter(p=>p.id!==state.viewProposal.id);
