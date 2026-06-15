@@ -602,6 +602,10 @@ function renderKPZones(){
           <div style="font-weight:700;color:var(--success)">${fmtRub(zr.total)}</div>
           <div style="font-size:11px;color:var(--text3)">${fmtRub(Math.round(zr.pricePerM2))} ₽/м²</div>
         </div>
+        <div style="display:flex;flex-direction:column;gap:3px;flex-shrink:0">
+          <button class="icon-btn up-btn" data-move-zone="up" data-zone-idx="${i}" style="${i===0?'visibility:hidden':''}">▲</button>
+          <button class="icon-btn up-btn" data-move-zone="down" data-zone-idx="${i}" style="${i===kp.zones.length-1?'visibility:hidden':''}">▼</button>
+        </div>
         <button class="icon-btn" data-del-zone="${i}" style="flex-shrink:0">✕</button>
       </div>
       ${z.layers.length>0?`<div style="display:flex;gap:5px;flex-wrap:wrap;margin-top:8px">
@@ -1876,6 +1880,18 @@ function bindEvents(){
         state.kp.zones.splice(parseInt(el.dataset.delZone),1);
         render();
       }
+    });
+  });
+  document.querySelectorAll('[data-move-zone]').forEach(el=>{
+    el.addEventListener('click',e=>{
+      e.stopPropagation();
+      const i = parseInt(el.dataset.zoneIdx);
+      const dir = el.dataset.moveZone;
+      const zones = state.kp.zones;
+      const j = dir==='up' ? i-1 : i+1;
+      if(j<0 || j>=zones.length) return;
+      [zones[i], zones[j]] = [zones[j], zones[i]];
+      render();
     });
   });
 
