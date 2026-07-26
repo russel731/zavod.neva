@@ -1372,110 +1372,258 @@ function renderEditScheme(){
 }
 
 /* ===== EXPORT PDF ===== */
-function exportPDF(kp, result, sendToTelegram){
+function exportPDF(kp, result){
+  // Форматирование чисел для PDF — без toLocaleString (даёт неразрывные пробелы)
+  const fmtMoney = n => {
+    const s = Math.round(n||0).toString();
+    return s.replace(/\B(?=(\d{3})+(?!\d))/g, ' '); // пробел ASCII
+  };
   const r = result || calcKP();
-  const now = new Date();
-  const dateStr = now.toLocaleDateString('ru');
-  const number  = Date.now().toString(36).toUpperCase().slice(-6);
-  const inTelegram = !!(tg && tg.initData && tg.initData.length > 10);
-  const wantTG = (sendToTelegram === undefined) ? inTelegram : !!sendToTelegram;
+  const d = new Date().toLocaleDateString('ru');
+  const num = Date.now().toString(36).toUpperCase().slice(-6);
+  const {jsPDF} = window.jspdf;
+  const doc = new jsPDF({orientation:'portrait', unit:'mm', format:'a4'});
 
-  show('⏳ Генерация PDF...');
+  doc.addFileToVFS('LiberationSans-Regular.ttf', FONT_REGULAR_B64);
+  doc.addFileToVFS('LiberationSans-Bold.ttf', FONT_BOLD_B64);
+  doc.addFont('LiberationSans-Regular.ttf', 'Lib', 'normal');
+  doc.addFont('LiberationSans-Bold.ttf', 'Lib', 'bold');
+  doc.setFont('Lib','normal');
 
-  const pin = (typeof auth !== 'undefined' && auth.pin) ? auth.pin
-            : (localStorage.getItem('zn_pin') || '');
+  const W = doc.internal.pageSize.getWidth();
+  const H = doc.internal.pageSize.getHeight();
+  const ML = 14, MR = 14, CW = W - ML - MR;
+  const NAVY = [26, 58, 110];
+  const LIGHT = [232, 237, 245];
+  let y = 12;
 
-  const payload = {
-    kp: {
-      name:     kp.name || '',
-      info:     kp.info || '',
-      note:     kp.note || '',
-      delivery: parseFloat(kp.delivery) || 0
-    },
-    result: r,
-    date:   dateStr,
-    number: number,
-    pin:    pin
-  };
+  // ── ШАПКА ─────────────────────────────────────────────────────────────────
+  const logoH = 28, logoW = Math.round(logoH * 600/196);
+  try { doc.addImage('data:image/jpeg;base64,'+LOGO_B64,'JPEG',ML,y,logoW,logoH); } catch(e){}
+  doc.setFontSize(8); doc.setTextColor(130,130,150); doc.setFont('Lib','normal');
+  doc.text('Дата: '+d, W-MR, y+6, {align:'right'});
+  doc.text('No '+num, W-MR, y+12, {align:'right'});
+  y += logoH + 3;
 
-  const headers = {
-    'Content-Type': 'application/json',
-    'ngrok-skip-browser-warning': '1'
-  };
-  if (pin) headers['X-Pin'] = pin;
-  if (inTelegram) headers['X-TG-InitData'] = tg.initData;
+  // Синяя полоса
+  doc.setFillColor(...NAVY);
+  doc.rect(ML, y, CW, 1.5, 'F');
+  y += 6;
 
-  fetch(API_URL + '/generate-pdf', {
-    method: 'POST',
-    headers: headers,
-    body: JSON.stringify(payload)
-  })
-  .then(function(resp){ return resp.json(); })
-  .then(function(data){
-    if (!data || !data.ok || !data.pdf_base64) {
-      show('❌ ' + ((data && data.error) || 'Ошибка генерации PDF'));
-      return;
+  // Клиент
+  doc.setFontSize(14); doc.setTextColor(20,20,35); doc.setFont('Lib','bold');
+  doc.text(kp.name||'Объект', ML, y); y += 5;
+  if(kp.info){
+    doc.setFontSize(8); doc.setFont('Lib','normal'); doc.setTextColor(100,100,120);
+    const il = doc.splitTextToSize(kp.info, CW);
+    doc.text(il, ML, y); y += il.length*4+2;
+  }
+  y += 2;
+
+  // ── ТАБЛИЦЫ ПО ЗОНАМ ──────────────────────────────────────────────────────
+  const displayTotal = r.zones.reduce((s,z)=>s+z.total,0);
+  const displayPerM2 = r.totalArea>0 ? Math.round(displayTotal/r.totalArea) : 0;
+
+  r.zones.forEach((zr,zi)=>{
+    if(y > H-60){ doc.addPage(); doc.setFont('Lib','normal'); y=14;
+      doc.setFillColor(...NAVY); doc.rect(ML,8,CW,0.8,'F');
+      doc.setFontSize(7); doc.setTextColor(...NAVY); doc.setFont('Lib','bold');
+      doc.text('ЗАВОД НЕВА', ML, 7);
+      doc.setFont('Lib','normal'); doc.setTextColor(160,160,180);
+      doc.text(kp.name||'', ML+38, 7);
+      doc.text('стр. '+doc.internal.getNumberOfPages(), W-MR, 7, {align:'right'});
     }
 
-    const safeName = (kp.name || 'ZavodNeva').replace(/\s+/g, '_');
-    const fname = 'KP_' + safeName + '_' + dateStr.replace(/\./g, '-') + '.pdf';
+    // Заголовок зоны
+    doc.setFillColor(...LIGHT);
+    doc.rect(ML, y, CW, 8, 'F');
+    doc.setFillColor(...NAVY);
+    doc.rect(ML, y, 3.5, 8, 'F');
+    doc.setFontSize(10); doc.setTextColor(...NAVY); doc.setFont('Lib','bold');
+    doc.text((zr.zone.name||('Зона '+(zi+1)))+' — '+zr.area+' м2', ML+6, y+5.5);
+    // сумма в заголовке зоны убрана
+    y += 10;
 
-    if (wantTG) {
-      const chatId = tg && tg.initDataUnsafe && tg.initDataUnsafe.user
-                   ? tg.initDataUnsafe.user.id : null;
-      if (!chatId) { show('❌ Нет Telegram ID'); return; }
-      show('⏳ Отправляю в Telegram...');
-      fetch(API_URL + '/send-pdf', {
-        method: 'POST',
-        headers: headers,
-        body: JSON.stringify({
-          pdf_base64: data.pdf_base64,
-          filename:   fname,
-          caption:    'КП: ' + (kp.name || 'Завод Нева') + ' — ' + dateStr,
-          chat_id:    chatId,
-          pin:        pin
-        })
-      })
-      .then(function(r2){ return r2.json(); })
-      .then(function(res2){
-        show(res2 && res2.ok ? '✅ PDF отправлен в чат с ботом!'
-                             : '❌ ' + ((res2 && res2.error) || 'Ошибка отправки'));
-      })
-      .catch(function(e){ show('❌ Ошибка отправки: ' + e.message); });
-      return;
-    }
+    const tableRows = (zr.layers||[]).map(l=>{
+      const lineCost = l.costMat + l.thinnerCost;
+      const prod_ = l.prod || (l.kpLayer?.productId ? getProduct(l.kpLayer.productId) : null);
+      const tarW = l.comp==='2c'
+        ? (l.kpLayer?.customContainer||prod_?.base||18)+' '+(l.unit==='l'?'л':'кг')+' осн.'
+        : (l.kpLayer?.customContainer||prod_?.container||25)+' '+(l.unit==='l'?'л':'кг');
+      const qty = l.comp==='2c'
+        ? l.kits+' компл x '+tarW
+        : l.containers+' шт x '+tarW;
+      // Фактический вес/объём
+      const totalAmt = fmtN(l.actualAmt,1)+' '+(l.unit==='l'?'л':'кг');
+      const ppu = l.actualAmt>0
+        ? fmtMoney(lineCost/l.actualAmt)+' '+(l.unit==='l'?'руб./л':'руб./кг')
+        : '—';
+      const catStr = catLabel(l.kpLayer?.category||l.prod?.category||'custom');
+      return [
+        '['+catStr+'] '+(l.fullName||l.name),
+        String(l.layerCount),
+        qty,
+        totalAmt,
+        ppu,
+        fmtMoney(lineCost)+' руб.'
+      ];
+    });
 
-    try {
-      const bin = atob(data.pdf_base64);
-      const arr = new Uint8Array(bin.length);
-      for (let i = 0; i < bin.length; i++) arr[i] = bin.charCodeAt(i);
-      const blob = new Blob([arr], {type: 'application/pdf'});
-      const url  = URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = fname;
-      a.style.display = 'none';
-      document.body.appendChild(a);
-      a.click();
-      document.body.removeChild(a);
-      setTimeout(function(){ URL.revokeObjectURL(url); }, 3000);
-      show('📥 PDF сохранён: ' + fname);
-    } catch (e) {
-      show('❌ Ошибка сохранения: ' + e.message);
-      console.error(e);
-    }
-  })
-  .catch(function(e){
-    show('❌ Ошибка: ' + e.message);
-    console.error('exportPDF error:', e);
+    // Итого зоны — тёмная строка
+    const zoneKg = (zr.layers||[]).filter(l=>l.unit!=='l').reduce((s,l)=>s+l.actualAmt,0);
+    const zoneL  = (zr.layers||[]).filter(l=>l.unit==='l' ).reduce((s,l)=>s+l.actualAmt,0);
+    let zoneAmt = '';
+    if(zoneKg>0) zoneAmt += fmtN(zoneKg,1)+' кг';
+    if(zoneKg>0&&zoneL>0) zoneAmt += ' + ';
+    if(zoneL>0) zoneAmt += fmtN(zoneL,1)+' л';
+
+    tableRows.push([
+      'Итого стоимость · '+fmtMoney(zr.pricePerM2)+' руб./м2',
+      '', '', zoneAmt, '',
+      fmtMoney(zr.total)+' руб.'
+    ]);
+
+    doc.autoTable({
+      startY: y,
+      head:[['Материал','Сл.','Кол-во x тара','Вес/объём','Цена/ед.','Сумма']],
+      body: tableRows,
+      theme:'striped',
+      tableWidth: CW,
+      margin:{left:ML, right:MR},
+      headStyles:{fillColor:NAVY, textColor:[255,255,255], fontSize:7.5, font:'Lib', fontStyle:'bold', cellPadding:2.5},
+      bodyStyles:{fontSize:7.5, font:'Lib', cellPadding:2.5, textColor:[30,30,50]},
+      alternateRowStyles:{fillColor:[246,248,254]},
+      columnStyles:{
+        0:{cellWidth:'auto'},
+        1:{cellWidth:8, halign:'center'},
+        2:{cellWidth:30},
+        3:{cellWidth:18, halign:'center'},
+        4:{cellWidth:22, halign:'right'},
+        5:{cellWidth:24, halign:'right'}
+      },
+      didParseCell(data){
+        const isLast = data.row.index === tableRows.length-1;
+        if(isLast){
+          data.cell.styles.fillColor = NAVY;
+          data.cell.styles.textColor = [255,255,255];
+          data.cell.styles.fontStyle = 'bold';
+          data.cell.styles.font = 'Lib';
+          data.cell.styles.fontSize = 8;
+        }
+      }
+    });
+    y = doc.lastAutoTable.finalY + 8;
   });
+
+  // ── ДОСТАВКА ─────────────────────────────────────────────────────────────
+  const delivery = kp.delivery || 0;
+  const grandTotal = displayTotal + delivery;
+  if(delivery > 0){
+    if(y > H-16){ doc.addPage(); y=14; }
+    doc.setFillColor(245, 247, 252);
+    doc.rect(ML, y, CW, 10, 'F');
+    doc.setFontSize(9); doc.setTextColor(...NAVY); doc.setFont('Lib','normal');
+    doc.text('Доставка:', ML+4, y+6.5);
+    doc.setFont('Lib','bold');
+    doc.text(fmtMoney(delivery)+' руб.', W-MR, y+6.5, {align:'right'});
+    y += 12;
+  }
+
+  // ── ИТОГОВЫЙ БЛОК ВНИЗУ ───────────────────────────────────────────────────
+  if(y > H-24){ doc.addPage(); y=14; }
+  doc.setFillColor(...NAVY);
+  doc.roundedRect(ML, y, CW, 20, 2, 2, 'F');
+
+  // Большая сумма слева
+  doc.setFontSize(22); doc.setTextColor(255,255,255); doc.setFont('Lib','bold');
+  doc.text(fmtMoney(grandTotal)+' руб.', ML+5, y+12);
+  doc.setFontSize(8); doc.setFont('Lib','normal'); doc.setTextColor(160,180,220);
+  const totalSubtext = delivery > 0
+    ? fmtMoney(displayTotal)+' матер. + '+fmtMoney(delivery)+' доставка  ·  '+fmtMoney(displayPerM2)+' руб./м2'
+    : fmtMoney(displayPerM2)+' руб./м2  ·  '+r.totalArea+' м2  ·  итого стоимость материалов';
+  doc.text(totalSubtext, ML+5, y+17);
+
+  // правый блок с зонами убран — информация не дублируется
+
+  // Нумерация страниц
+  const pages = doc.internal.getNumberOfPages();
+  if(pages>1){
+    for(let p=1;p<=pages;p++){
+      doc.setPage(p);
+      doc.setFontSize(7); doc.setTextColor(180,180,200); doc.setFont('Lib','normal');
+      doc.text(p+' / '+pages, W/2, H-4, {align:'center'});
+    }
+  }
+
+  // ── СКАЧИВАНИЕ ────────────────────────────────────────────────────────────
+  const fname = 'KP_'+(kp.name||'ZavodNeva').replace(/\s+/g,'_')+'_'+d.replace(/\./g,'-')+'.pdf';
+  const pdfBlob = new Blob([doc.output('arraybuffer')], {type:'application/pdf'});
+  const pdfFile = new File([pdfBlob], fname, {type:'application/pdf'});
+
+  // В Telegram — отправляем через бота
+  if(tg?.initData && tg.initData.length > 10){
+    const chatId = tg?.initDataUnsafe?.user?.id;
+    if(chatId){
+      show('⏳ Отправляю PDF в Telegram...');
+      const reader = new FileReader();
+      reader.onloadend = async function(){
+        const base64 = reader.result.split(',')[1];
+        const result = await api('POST', '/send-pdf', {
+          pdf_base64: base64,
+          filename: fname,
+          caption: 'КП: ' + (kp.name||'Завод Нева') + ' — ' + d,
+          chat_id: chatId,
+        });
+        if(result?.ok){
+          show('✅ PDF отправлен в чат с ботом!');
+        } else {
+          show('❌ Ошибка отправки: ' + (result?.error||'попробуйте ещё раз'));
+        }
+      };
+      reader.readAsDataURL(pdfBlob);
+      return;
+    }
+  }
+
+  // Браузер — обычное скачивание
+  const url = URL.createObjectURL(pdfBlob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = fname;
+  a.style.display = 'none';
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  setTimeout(()=>URL.revokeObjectURL(url), 3000);
+  show('📥 PDF сохранён: ' + fname);
 }
 
 
 function generatePDFBase64(kp, result){
-  console.warn('generatePDFBase64 устарела — PDF генерируется на сервере через /generate-pdf');
-  return null;
+  // Генерирует PDF и возвращает data URI строку (без скачивания)
+  const r = result || calcKP();
+  const d = new Date().toLocaleDateString('ru');
+  const num = Date.now().toString(36).toUpperCase().slice(-6);
+  const {jsPDF} = window.jspdf;
+  if(!jsPDF) return null;
+  try {
+    // Используем ту же логику что в exportPDF
+    // Но вместо скачивания возвращаем datauristring
+    const doc = new jsPDF({orientation:'portrait', unit:'mm', format:'a4'});
+    doc.addFileToVFS('LiberationSans-Regular.ttf', FONT_REGULAR_B64);
+    doc.addFileToVFS('LiberationSans-Bold.ttf', FONT_BOLD_B64);
+    doc.addFont('LiberationSans-Regular.ttf', 'Lib', 'normal');
+    doc.addFont('LiberationSans-Bold.ttf', 'Lib', 'bold');
+    doc.setFont('Lib','normal');
+    doc.text((kp.name||'КП') + ' — ' + d, 14, 20);
+    doc.text('Итого: ' + Math.round(r.zones.reduce((s,z)=>s+z.total,0)).toLocaleString('ru') + ' руб.', 14, 30);
+    return doc.output('datauristring');
+  } catch(e) {
+    console.error('generatePDFBase64 error:', e);
+    return null;
+  }
 }
+
 
 /* ===== PRODUCT ACTIONS ===== */
 function saveProduct(){
